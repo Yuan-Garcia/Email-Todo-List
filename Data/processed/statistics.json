@@ -1,0 +1,24 @@
+{
+  "total_emails": 5202,
+  "unique_emails": 4675,
+  "label_distribution": {
+    "0": 4202,
+    "1": 1000
+  },
+  "source_distribution": {
+    "spam_assassin": 4202,
+    "enron": 1000
+  },
+  "avg_email_length": 1529.557477893118,
+  "median_email_length": 450.0,
+  "min_email_length": 16,
+  "max_email_length": 113399,
+  "top_enron_folders": {
+    "_sent_mail": 602,
+    "all_documents": 398
+  },
+  "spam_assassin_difficulty": {
+    "easy": 3952,
+    "hard": 250
+  }
+}
