@@ -2,6 +2,9 @@
 Data/*
 !Data/.gitkeep
 
+# Pickle files (model files are too large)
+*.pkl
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[codz]
