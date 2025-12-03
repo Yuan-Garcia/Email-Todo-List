@@ -1,0 +1,26 @@
+# Email Dataset Preprocessing and Classification Requirements
+
+# Core data processing
+pandas>=2.0.0
+numpy>=1.24.0
+scikit-learn>=1.3.0
+
+# NLP and ML
+transformers>=4.30.0
+datasets>=2.14.0
+torch>=2.0.0
+evaluate>=0.4.0
+
+# Progress bars
+tqdm>=4.65.0
+
+# Kaggle API for dataset download
+kagglehub>=0.2.0
+
+# Optional: For hyperparameter tuning
+ray[tune]>=2.5.0
+
+# Email parsing (stdlib, no install needed)
+# email
+# re
+
