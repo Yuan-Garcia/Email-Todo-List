@@ -1,6 +1,31 @@
-from call_LLM import call_LLM
+from .call_LLM import call_LLM
+from ..emails.read_mail import fetch_recent_emails
 
-def generate_todo_list(email_list):
+
+
+
+
+
+def format_emails_for_prompt(email_dicts):
+    """
+    Turn a list of email dicts into a single string for the prompt.
+    """
+    blocks = []
+    for i, e in enumerate(email_dicts, start=1):
+        block = f"""Email {i}:
+                From: {e['from']}
+                Subject: {e['subject']}
+                Date: {e['date']}
+
+                Body:
+                {e['body']}
+                """
+        blocks.append(block)
+
+    return "\n\n" .join(blocks)
+
+
+def generate_todo_list(email_dicts):
     system_email_prompt = """
     You are an assistant that converts raw emails into a concise, prioritized to-do list.
     Your goal is to analyze the content of each email, infer the sender’s intent, 
@@ -43,16 +68,17 @@ def generate_todo_list(email_list):
 
     **Emails:**
 
-    {email_list}
+    {email_dicts}
     """
 
     return call_LLM(system_email_prompt, user_email_prompt)
 
 def main():
-    # Example usage
-    emails = ["I need you to do something TODAY!!!", "Can you send me the report by next week?"]
+    # pull, say, the 20 most recent emails
+    emails = fetch_recent_emails(limit=20)
     todo_list = generate_todo_list(emails)
     print(todo_list)
+
 
 if __name__ == "__main__":
     main()
