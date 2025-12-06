@@ -1,3 +1,10 @@
+# Data files (datasets are large)
+Data/*
+!Data/.gitkeep
+
+# Pickle files (model files are too large)
+*.pkl
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[codz]
@@ -209,3 +216,16 @@ __marimo__/
 
 *.csv
 .csv
+
+# Temporary files
+Data/temp_*.pkl
+__pycache__/
+*.pyc
+
+# IDE
+.cursor/# Model files (too large for git)
+src/classifier/results/
+src/classifier/email_classifier_final/
+*.safetensors
+*.pt
+optimizer.pt
