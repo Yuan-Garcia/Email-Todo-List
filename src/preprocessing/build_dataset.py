@@ -75,6 +75,45 @@ def create_text_label_dict(df: pd.DataFrame) -> Dict[str, int]:
     return text_label_dict
 
 
+def create_balanced_dict(text_label_dict: Dict[str, int], ratio: float = 5.0) -> Dict[str, int]:
+    """
+    Create a balanced dataset using stratified sampling.
+    Keeps all minority class (casual), samples majority class (business) to achieve target ratio.
+    
+    Args:
+        text_label_dict: Full dictionary {email_text: label}
+        ratio: Business:Casual ratio (e.g., 5.0 for 1:5)
+        
+    Returns:
+        Balanced dictionary with target ratio
+    """
+    import random
+    
+    print(f"\nCreating balanced dataset (1:{ratio:.1f} Casual:Business ratio)...")
+    
+    # Separate by class
+    casual_emails = {k: v for k, v in text_label_dict.items() if v == 0}
+    business_emails = {k: v for k, v in text_label_dict.items() if v == 1}
+    
+    print(f"  Original - Casual: {len(casual_emails):,}, Business: {len(business_emails):,}")
+    
+    # Calculate target business count
+    target_business_count = int(len(casual_emails) * ratio)
+    
+    # Sample business emails
+    random.seed(42)  # For reproducibility
+    business_items = list(business_emails.items())
+    sampled_business = dict(random.sample(business_items, min(target_business_count, len(business_items))))
+    
+    # Combine
+    balanced_dict = {**casual_emails, **sampled_business}
+    
+    print(f"  Balanced - Casual: {len(casual_emails):,}, Business: {len(sampled_business):,}")
+    print(f"  Total: {len(balanced_dict):,} | Ratio: {len(sampled_business)/len(casual_emails):.1f}:1")
+    
+    return balanced_dict
+
+
 def save_dict_as_pickle(data_dict: Dict, output_path: str):
     """
     Save dictionary as pickle file.

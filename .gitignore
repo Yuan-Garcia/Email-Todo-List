@@ -216,3 +216,11 @@ __marimo__/
 
 *.csv
 .csv
+
+# Temporary files
+Data/temp_*.pkl
+__pycache__/
+*.pyc
+
+# IDE
+.cursor/

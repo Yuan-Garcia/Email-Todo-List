@@ -9,6 +9,25 @@ from email.utils import parsedate_to_datetime
 from typing import Dict, Optional
 
 
+def replace_urls_and_emails(text: str) -> str:
+    """
+    Replace URLs and email addresses with tokens to reduce vocabulary.
+    
+    Args:
+        text: Input text
+        
+    Returns:
+        Text with URLs replaced by [URL] and emails by [EMAIL]
+    """
+    # Replace URLs (http, https, www)
+    text = re.sub(r'http\S+|www\.\S+', '[URL]', text)
+    
+    # Replace email addresses
+    text = re.sub(r'\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b', '[EMAIL]', text)
+    
+    return text
+
+
 def parse_email_headers(raw_email: str) -> Dict[str, Optional[str]]:
     """
     Extract From, To, Subject, Date from raw email text.
@@ -258,6 +277,7 @@ def clean_email_text(raw_email: str) -> Dict[str, str]:
     # Clean body
     body = remove_quoted_replies(body)
     body = remove_signatures(body)
+    body = replace_urls_and_emails(body)
     body = normalize_whitespace(body)
     
     # Combine subject and body for model input

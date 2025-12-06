@@ -70,9 +70,16 @@ def classify_folder_as_casual(folder_name: str) -> bool:
     Returns:
         True if casual, False if business
     """
+    import re
     folder_lower = folder_name.lower()
     
+    # Specific exclusions to avoid false positives
+    exclusions = ['transport', 'transportation', 'passport']
+    if any(excl in folder_lower for excl in exclusions):
+        return False
+    
     # Check if any casual keyword is in the folder name
+    # This allows compound words like "myfriends", "personalfolder", etc.
     for keyword in CASUAL_KEYWORDS:
         if keyword in folder_lower:
             return True

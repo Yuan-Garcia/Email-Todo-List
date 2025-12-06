@@ -17,6 +17,7 @@ from process_spam_assassin import process_spam_assassin_dataset
 from build_dataset import (
     combine_datasets,
     create_text_label_dict,
+    create_balanced_dict,
     save_dict_as_pickle,
     save_dict_as_json,
     save_metadata_csv,
@@ -47,6 +48,8 @@ def get_paths(base_dir: str = None):
         'output_dir': os.path.join(base_dir, 'Data', 'processed'),
         'dict_pkl': os.path.join(base_dir, 'Data', 'processed', 'email_label_dict.pkl'),
         'dict_json': os.path.join(base_dir, 'Data', 'processed', 'email_label_dict.json'),
+        'dict_balanced_pkl': os.path.join(base_dir, 'Data', 'processed', 'email_label_dict_balanced.pkl'),
+        'dict_balanced_json': os.path.join(base_dir, 'Data', 'processed', 'email_label_dict_balanced.json'),
         'metadata_csv': os.path.join(base_dir, 'Data', 'processed', 'metadata.csv')
     }
     
@@ -54,7 +57,7 @@ def get_paths(base_dir: str = None):
 
 
 def main(max_enron_emails: int = None, skip_enron: bool = False, skip_spam: bool = False, 
-         use_kaggle: bool = True, no_kaggle: bool = False):
+         use_kaggle: bool = True, no_kaggle: bool = False, balance_ratio: float = None):
     """
     Simplified preprocessing pipeline.
     
@@ -64,6 +67,7 @@ def main(max_enron_emails: int = None, skip_enron: bool = False, skip_spam: bool
         skip_spam: Skip Spam Assassin processing (load from temp file)
         use_kaggle: Download Enron dataset from Kaggle (default: True if local file missing)
         no_kaggle: Disable Kaggle download even if local file is missing
+        balance_ratio: If specified, create a balanced dataset with this Business:Casual ratio
     """
     # Handle no_kaggle flag
     if no_kaggle:
@@ -172,6 +176,17 @@ def main(max_enron_emails: int = None, skip_enron: bool = False, skip_spam: bool
     save_dict_as_json(text_label_dict, paths['dict_json'], sample_only=True)
     print()
     
+    # Step 6.5: Create balanced dataset (if requested)
+    if balance_ratio is not None:
+        print("=" * 70)
+        print(f"STEP 6.5: Creating Balanced Dataset (1:{balance_ratio:.1f} ratio)")
+        print("=" * 70)
+        
+        balanced_dict = create_balanced_dict(text_label_dict, ratio=balance_ratio)
+        save_dict_as_pickle(balanced_dict, paths['dict_balanced_pkl'])
+        save_dict_as_json(balanced_dict, paths['dict_balanced_json'], sample_only=True)
+        print()
+    
     # Step 7: Save metadata CSV
     print("=" * 70)
     print("STEP 7: Saving Metadata CSV")
@@ -197,8 +212,14 @@ def main(max_enron_emails: int = None, skip_enron: bool = False, skip_spam: bool
     print(f"\nOutput files:")
     print(f"  1. Dictionary (pickle): {paths['dict_pkl']}")
     print(f"  2. Dictionary (JSON sample): {paths['dict_json']}")
-    print(f"  3. Metadata CSV: {paths['metadata_csv']}")
-    print(f"  4. Statistics: {paths['output_dir']}/statistics.txt")
+    if balance_ratio is not None:
+        print(f"  3. Balanced Dictionary (pickle): {paths['dict_balanced_pkl']}")
+        print(f"  4. Balanced Dictionary (JSON sample): {paths['dict_balanced_json']}")
+        print(f"  5. Metadata CSV: {paths['metadata_csv']}")
+        print(f"  6. Statistics: {paths['output_dir']}/statistics.txt")
+    else:
+        print(f"  3. Metadata CSV: {paths['metadata_csv']}")
+        print(f"  4. Statistics: {paths['output_dir']}/statistics.txt")
     print()
     print("To load the dictionary in Python:")
     print(f"  import pickle")
@@ -254,6 +275,13 @@ if __name__ == "__main__":
         help='Disable Kaggle download (fail if local CSV not found)'
     )
     
+    parser.add_argument(
+        '--balance-ratio',
+        type=float,
+        default=None,
+        help='Create balanced dataset with Business:Casual ratio (e.g., 5.0 for 1:5)'
+    )
+    
     args = parser.parse_args()
     
     # Set max_enron to 1000 if in test mode
@@ -265,5 +293,6 @@ if __name__ == "__main__":
         skip_enron=args.skip_enron,
         skip_spam=args.skip_spam,
         use_kaggle=args.use_kaggle,
-        no_kaggle=args.no_kaggle
+        no_kaggle=args.no_kaggle,
+        balance_ratio=args.balance_ratio
     )
