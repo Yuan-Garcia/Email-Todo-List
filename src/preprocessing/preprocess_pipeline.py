@@ -24,6 +24,10 @@ from build_dataset import (
     generate_dataset_statistics
 )
 
+# Add classifier path for rule-based imports
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'classifier'))
+from rule_based import reclassify_dataset, analyze_dataset
+
 
 def get_paths(base_dir: str = None):
     """
@@ -57,7 +61,8 @@ def get_paths(base_dir: str = None):
 
 
 def main(max_enron_emails: int = None, skip_enron: bool = False, skip_spam: bool = False, 
-         use_kaggle: bool = True, no_kaggle: bool = False, balance_ratio: float = None):
+         use_kaggle: bool = True, no_kaggle: bool = False, balance_ratio: float = None,
+         apply_rules: bool = False, rule_threshold: float = 0.5):
     """
     Simplified preprocessing pipeline.
     
@@ -68,6 +73,8 @@ def main(max_enron_emails: int = None, skip_enron: bool = False, skip_spam: bool
         use_kaggle: Download Enron dataset from Kaggle (default: True if local file missing)
         no_kaggle: Disable Kaggle download even if local file is missing
         balance_ratio: If specified, create a balanced dataset with this Business:Casual ratio
+        apply_rules: Apply rule-based reclassification to fix mislabeled Enron emails
+        rule_threshold: Confidence threshold for rule-based reclassification (0.0-1.0)
     """
     # Handle no_kaggle flag
     if no_kaggle:
@@ -167,6 +174,22 @@ def main(max_enron_emails: int = None, skip_enron: bool = False, skip_spam: bool
     text_label_dict = create_text_label_dict(combined_df)
     print()
     
+    # Step 5.5: Apply rule-based reclassification (if requested)
+    if apply_rules:
+        print("=" * 70)
+        print("STEP 5.5: Rule-Based Reclassification")
+        print("=" * 70)
+        print(f"Applying rule-based patterns to identify mislabeled business emails...")
+        print(f"Confidence threshold: {rule_threshold:.0%}")
+        
+        # First show analysis
+        print("\nAnalyzing dataset...")
+        analyze_dataset(text_label_dict)
+        
+        # Apply reclassification
+        text_label_dict = reclassify_dataset(text_label_dict, threshold=rule_threshold, verbose=True)
+        print()
+    
     # Step 6: Save dictionary
     print("=" * 70)
     print("STEP 6: Saving Dictionary")
@@ -185,7 +208,7 @@ def main(max_enron_emails: int = None, skip_enron: bool = False, skip_spam: bool
         balanced_dict = create_balanced_dict(text_label_dict, ratio=balance_ratio)
         save_dict_as_pickle(balanced_dict, paths['dict_balanced_pkl'])
         save_dict_as_json(balanced_dict, paths['dict_balanced_json'], sample_only=True)
-        print()
+    print()
     
     # Step 7: Save metadata CSV
     print("=" * 70)
@@ -282,6 +305,19 @@ if __name__ == "__main__":
         help='Create balanced dataset with Business:Casual ratio (e.g., 5.0 for 1:5)'
     )
     
+    parser.add_argument(
+        '--apply-rules',
+        action='store_true',
+        help='Apply rule-based reclassification to fix mislabeled Enron business emails'
+    )
+    
+    parser.add_argument(
+        '--rule-threshold',
+        type=float,
+        default=0.5,
+        help='Confidence threshold for rule-based reclassification (0.0-1.0, default: 0.5)'
+    )
+    
     args = parser.parse_args()
     
     # Set max_enron to 1000 if in test mode
@@ -294,5 +330,7 @@ if __name__ == "__main__":
         skip_spam=args.skip_spam,
         use_kaggle=args.use_kaggle,
         no_kaggle=args.no_kaggle,
-        balance_ratio=args.balance_ratio
+        balance_ratio=args.balance_ratio,
+        apply_rules=args.apply_rules,
+        rule_threshold=args.rule_threshold
     )
