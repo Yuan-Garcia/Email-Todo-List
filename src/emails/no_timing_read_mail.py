@@ -1,6 +1,5 @@
 import re
 import ssl
-import time
 import imaplib
 from typing import List, Dict, Optional
 from email import message_from_bytes
@@ -153,48 +152,27 @@ def fetch_recent_emails(limit: int = 20, unread_only: bool = False) -> List[Dict
     Args:
         limit: Max number of recent messages to return.
         unread_only: If True, only fetch UNSEEN messages; otherwise ALL.
-
-    Also prints timing breakdown to stdout so you can see where the
-    slowness is coming from.
     """
-    t0 = time.perf_counter()
-
-    # --- Auth ---
     creds = get_creds()
     access_token = creds.token
-    t_auth = time.perf_counter()
 
     # XOAUTH2 auth string for Gmail IMAP
     auth_string = f"user={EMAIL}\1auth=Bearer {access_token}\1\1"
 
-    # --- Connect ---
     context = ssl.create_default_context()
     imap = imaplib.IMAP4_SSL(IMAP_HOST, IMAP_PORT, ssl_context=context)
     imap.authenticate("XOAUTH2", lambda _: auth_string.encode("utf-8"))
-    t_connect = time.perf_counter()
 
     try:
-        # --- Select + search ---
         imap.select("INBOX")
 
         search_criteria = "UNSEEN" if unread_only else "ALL"
         typ, data = imap.search(None, search_criteria)
-        t_search = time.perf_counter()
-
         if typ != "OK":
-            print("[read_mail] search failed")
             return []
 
         ids = data[0].split()
         if not ids:
-            t_done = time.perf_counter()
-            print(
-                f"[read_mail] AUTH: {t_auth - t0:.3f}s, "
-                f"CONNECT: {t_connect - t_auth:.3f}s, "
-                f"SEARCH: {t_search - t_connect:.3f}s, "
-                f"FETCH+PARSE: 0.000s, TOTAL: {t_done - t0:.3f}s "
-                f"(no messages)"
-            )
             return []
 
         # Take only the most recent N
@@ -202,12 +180,7 @@ def fetch_recent_emails(limit: int = 20, unread_only: bool = False) -> List[Dict
 
         emails: List[Dict[str, str]] = []
 
-        # --- Fetch + parse loop ---
-        t_fetch_start = time.perf_counter()
-
         for msg_id in ids:
-            t_msg_start = time.perf_counter()
-
             typ, msg_data = imap.fetch(msg_id, "(BODY.PEEK[])")
             if typ != "OK" or not msg_data or not isinstance(msg_data[0], tuple):
                 continue
@@ -234,26 +207,6 @@ def fetch_recent_emails(limit: int = 20, unread_only: bool = False) -> List[Dict
                 }
             )
 
-            t_msg_end = time.perf_counter()
-            # Per-message timing (you can comment this out if it's too spammy)
-            print(
-                f"[read_mail] fetched+parsed msg {msg_id.decode()} "
-                f"in {t_msg_end - t_msg_start:.3f}s"
-            )
-
-        t_fetch_end = time.perf_counter()
-        t_done = time.perf_counter()
-
-        print(
-            "[read_mail] timing breakdown:\n"
-            f"  AUTH:         {t_auth - t0:.3f}s\n"
-            f"  CONNECT:      {t_connect - t_auth:.3f}s\n"
-            f"  SELECT+SEARCH:{t_search - t_connect:.3f}s\n"
-            f"  FETCH+PARSE:  {t_fetch_end - t_fetch_start:.3f}s "
-            f"for {len(ids)} msgs\n"
-            f"  TOTAL:        {t_done - t0:.3f}s\n"
-        )
-
         return emails
 
     finally:
@@ -270,5 +223,5 @@ if __name__ == "__main__":
         print("FROM:", e["from"])
         print("SUBJECT:", e["subject"])
         print("DATE:", e["date"])
-        print("BODY PREVIEW:", e["body"].replace("\n", " ")[:200], "...")
+        print("BODY PREVIEW:", e["body"].replace("\n", " ")[:300], "...")
         print("-" * 40)
