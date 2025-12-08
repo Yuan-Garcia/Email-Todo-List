@@ -6,9 +6,13 @@ from transformers import BertForSequenceClassification, BertTokenizer
 app = FastAPI(title="Email Classification API")
 
 # Load tokenizer and model
-MODEL_DIR = "src/classifier/my_email_classifier/model.safetensors"
-tokenizer = BertTokenizer.from_pretrained(MODEL_DIR)
-model = BertForSequenceClassification.from_pretrained(MODEL_DIR, device_map="auto")
+# Use the local tokenizer directory for tokenizer config
+TOKENIZER_DIR = "src/classifier/my_email_classifier"
+# Use a pre-trained BERT model (replace with your fine-tuned model path when available)
+MODEL_NAME = "bert-base-uncased"
+
+tokenizer = BertTokenizer.from_pretrained(TOKENIZER_DIR)
+model = BertForSequenceClassification.from_pretrained(MODEL_NAME, num_labels=2)
 model.eval()
 
 # Define labels

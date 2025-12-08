@@ -231,3 +231,4 @@ src/classifier/email_classifier_final/
 optimizer.pt
 
 token.json
+*.json
