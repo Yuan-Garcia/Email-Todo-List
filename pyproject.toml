@@ -1,0 +1,18 @@
+[build-system]
+requires = ["setuptools", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "email_todo_list"
+version = "0.1.0"
+description = "Gmail to Todo List Generator"
+dependencies = [
+    "streamlit",
+    "openai",
+    "google-api-python-client",
+    "google-auth-oauthlib",
+    "google-auth-httplib2"
+]
+
+[tool.setuptools.packages.find]
+where = ["src"]

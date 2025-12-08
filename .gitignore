@@ -214,3 +214,14 @@ __marimo__/
 .json
 *.json
 
+#################
+# FOR FRONT END #
+#################
+# Python
+__pycache__/
+*.pyc
+venv/
+# Secrets
+credentials.json
+token.json
+.env
