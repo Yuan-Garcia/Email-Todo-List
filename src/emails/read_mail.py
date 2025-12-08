@@ -1,22 +1,21 @@
 import re
-import ssl
 import time
-import imaplib
+import base64
 from typing import List, Dict, Optional
-from email import message_from_bytes
+
 from email.header import decode_header, make_header
+from googleapiclient.discovery import build
 
-from .auth import get_creds
+from .auth import get_creds  # your existing OAuth helper
 
 
-EMAIL = "ygarcia@g.hmc.edu"   # <- your address
-IMAP_HOST = "imap.gmail.com"
-IMAP_PORT = 993
-
+# -------------------------------------------------------------------
+# Helpers
+# -------------------------------------------------------------------
 
 def _decode_header(value: Optional[str]) -> str:
     """
-    Safely decode MIME-encoded headers (e.g., subject, from).
+    Safely decode MIME-encoded headers (e.g., Subject, From).
     """
     if not value:
         return ""
@@ -88,185 +87,163 @@ def _html_to_text(html: str) -> str:
     return text.strip()
 
 
-def _get_body(msg) -> str:
+def _decode_base64(data: str) -> str:
     """
-    Extract the best plain-text body from an email.message.Message.
+    Gmail uses base64url encoding. This helper decodes safely.
+    """
+    if not data:
+        return ""
+    # Pad to correct length for b64 decoder
+    missing = len(data) % 4
+    if missing:
+        data += "=" * (4 - missing)
+    try:
+        return base64.urlsafe_b64decode(data).decode("utf-8", errors="ignore")
+    except Exception:
+        return ""
+
+
+def _extract_body_from_payload(payload: Dict) -> str:
+    """
+    Walk a Gmail message payload and extract the best plain-text body.
 
     - Prefer text/plain parts
     - Fall back to text/html (converted to text)
-    - Ignore attachments and images
+    - Ignores attachments automatically (Gmail separates them)
     """
-    if msg.is_multipart():
-        plain_parts: List[str] = []
-        html_parts: List[str] = []
+    plain_parts: List[str] = []
+    html_parts: List[str] = []
 
-        for part in msg.walk():
-            ctype = (part.get_content_type() or "").lower()
-            disp = (part.get("Content-Disposition") or "").lower()
+    def walk(part: Dict):
+        mime = (part.get("mimeType") or "").lower()
+        body = part.get("body", {}) or {}
 
-            # Skip attachments and inline images
-            if "attachment" in disp or ctype.startswith("image/") or ctype.startswith("application/"):
-                continue
+        data = body.get("data")
+        if data:
+            decoded = _decode_base64(data)
+            if mime == "text/plain":
+                plain_parts.append(decoded)
+            elif mime == "text/html":
+                html_parts.append(decoded)
 
-            try:
-                payload = part.get_payload(decode=True) or b""
-                charset = part.get_content_charset() or "utf-8"
-                text = payload.decode(charset, errors="replace")
-            except Exception:
-                continue
+        for child in part.get("parts", []) or []:
+            walk(child)
 
-            if ctype == "text/plain":
-                plain_parts.append(text)
-            elif ctype == "text/html":
-                html_parts.append(text)
+    walk(payload)
 
-        if plain_parts:
-            return "\n".join(plain_parts).strip()
-        if html_parts:
-            return "\n".join(_html_to_text(h) for h in html_parts).strip()
-        return ""
-    else:
-        # Single-part message
-        try:
-            payload = msg.get_payload(decode=True) or b""
-            charset = msg.get_content_charset() or "utf-8"
-            text = payload.decode(charset, errors="replace")
-        except Exception:
-            text = msg.get_payload() or ""
+    if plain_parts:
+        return "\n".join(plain_parts).strip()
+    if html_parts:
+        return "\n".join(_html_to_text(h) for h in html_parts).strip()
+    return ""
 
-        ctype = (msg.get_content_type() or "").lower()
-        if ctype == "text/html" or "<html" in text.lower():
-            return _html_to_text(text)
-        return text.strip()
 
+# -------------------------------------------------------------------
+# Main API
+# -------------------------------------------------------------------
 
 def fetch_recent_emails(limit: int = 20, unread_only: bool = False) -> List[Dict[str, str]]:
     """
-    Return a list of the most recent emails as dicts:
+    Fetch recent emails via the Gmail HTTP API.
+
+    Returns a list of dicts:
     {
         "from": ...,
         "subject": ...,
         "date": ...,
-        "body": ...   # reply-stripped plain-text body
+        "body": ...   # reply-stripped plain text body
     }
 
     Args:
         limit: Max number of recent messages to return.
-        unread_only: If True, only fetch UNSEEN messages; otherwise ALL.
-
-    Also prints timing breakdown to stdout so you can see where the
-    slowness is coming from.
+        unread_only: If True, only fetch messages matching is:unread.
     """
     t0 = time.perf_counter()
 
-    # --- Auth ---
+    # --- Auth + service build ---
     creds = get_creds()
-    access_token = creds.token
     t_auth = time.perf_counter()
 
-    # XOAUTH2 auth string for Gmail IMAP
-    auth_string = f"user={EMAIL}\1auth=Bearer {access_token}\1\1"
+    service = build("gmail", "v1", credentials=creds)
+    t_service = time.perf_counter()
 
-    # --- Connect ---
-    context = ssl.create_default_context()
-    imap = imaplib.IMAP4_SSL(IMAP_HOST, IMAP_PORT, ssl_context=context)
-    imap.authenticate("XOAUTH2", lambda _: auth_string.encode("utf-8"))
-    t_connect = time.perf_counter()
+    # --- List message IDs ---
+    query = "is:unread" if unread_only else None
+    list_kwargs = {
+        "userId": "me",
+        "maxResults": limit,
+        "labelIds": ["INBOX"],
+    }
+    if query:
+        list_kwargs["q"] = query
 
-    try:
-        # --- Select + search ---
-        imap.select("INBOX")
+    list_resp = service.users().messages().list(**list_kwargs).execute()
+    t_list = time.perf_counter()
 
-        search_criteria = "UNSEEN" if unread_only else "ALL"
-        typ, data = imap.search(None, search_criteria)
-        t_search = time.perf_counter()
+    messages = list_resp.get("messages", []) or []
+    ids = [m["id"] for m in messages]
 
-        if typ != "OK":
-            print("[read_mail] search failed")
-            return []
-
-        ids = data[0].split()
-        if not ids:
-            t_done = time.perf_counter()
-            print(
-                f"[read_mail] AUTH: {t_auth - t0:.3f}s, "
-                f"CONNECT: {t_connect - t_auth:.3f}s, "
-                f"SEARCH: {t_search - t_connect:.3f}s, "
-                f"FETCH+PARSE: 0.000s, TOTAL: {t_done - t0:.3f}s "
-                f"(no messages)"
-            )
-            return []
-
-        # Take only the most recent N
-        ids = ids[-limit:]
-
-        emails: List[Dict[str, str]] = []
-
-        # --- Fetch + parse loop ---
-        t_fetch_start = time.perf_counter()
-
-        for msg_id in ids:
-            t_msg_start = time.perf_counter()
-
-            typ, msg_data = imap.fetch(msg_id, "(BODY.PEEK[])")
-            if typ != "OK" or not msg_data or not isinstance(msg_data[0], tuple):
-                continue
-
-            raw = msg_data[0][1]
-            if not raw:
-                continue
-
-            msg = message_from_bytes(raw)
-
-            from_ = _decode_header(msg.get("From", ""))
-            subject = _decode_header(msg.get("Subject", ""))
-            date = msg.get("Date", "")
-
-            body_raw = _get_body(msg)
-            body = strip_replies(body_raw)
-
-            emails.append(
-                {
-                    "from": from_,
-                    "subject": subject,
-                    "date": date,
-                    "body": body,
-                }
-            )
-
-            t_msg_end = time.perf_counter()
-            # Per-message timing (you can comment this out if it's too spammy)
-            print(
-                f"[read_mail] fetched+parsed msg {msg_id.decode()} "
-                f"in {t_msg_end - t_msg_start:.3f}s"
-            )
-
-        t_fetch_end = time.perf_counter()
+    if not ids:
         t_done = time.perf_counter()
-
         print(
-            "[read_mail] timing breakdown:\n"
-            f"  AUTH:         {t_auth - t0:.3f}s\n"
-            f"  CONNECT:      {t_connect - t_auth:.3f}s\n"
-            f"  SELECT+SEARCH:{t_search - t_connect:.3f}s\n"
-            f"  FETCH+PARSE:  {t_fetch_end - t_fetch_start:.3f}s "
-            f"for {len(ids)} msgs\n"
-            f"  TOTAL:        {t_done - t0:.3f}s\n"
+            "[gmail_read] timing breakdown:\n"
+            f"  AUTH:       {t_auth - t0:.3f}s\n"
+            f"  SERVICE:    {t_service - t_auth:.3f}s\n"
+            f"  LIST IDS:   {t_list - t_service:.3f}s\n"
+            f"  FETCH MSGS: 0.000s (no messages)\n"
+            f"  TOTAL:      {t_done - t0:.3f}s\n"
+        )
+        return []
+
+    # --- Fetch each message (still fast over HTTP) ---
+    emails: List[Dict[str, str]] = []
+    t_fetch_start = time.perf_counter()
+
+    for mid in ids:
+        msg = service.users().messages().get(
+            userId="me",
+            id=mid,
+            format="full",
+        ).execute()
+
+        payload = msg.get("payload", {}) or {}
+        headers = {h["name"]: h["value"] for h in payload.get("headers", [])}
+
+        from_ = _decode_header(headers.get("From", ""))
+        subject = _decode_header(headers.get("Subject", ""))
+        date = headers.get("Date", "")
+
+        body_raw = _extract_body_from_payload(payload)
+        body = strip_replies(body_raw)
+
+        emails.append(
+            {
+                "from": from_,
+                "subject": subject,
+                "date": date,
+                "body": body,
+            }
         )
 
-        return emails
+    t_fetch_end = time.perf_counter()
+    t_done = time.perf_counter()
 
-    finally:
-        try:
-            imap.close()
-        except Exception:
-            pass
-        imap.logout()
+    print(
+        "[gmail_read] timing breakdown:\n"
+        f"  AUTH:       {t_auth - t0:.3f}s\n"
+        f"  SERVICE:    {t_service - t_auth:.3f}s\n"
+        f"  LIST IDS:   {t_list - t_service:.3f}s\n"
+        f"  FETCH MSGS: {t_fetch_end - t_fetch_start:.3f}s for {len(ids)} msgs\n"
+        f"  TOTAL:      {t_done - t0:.3f}s\n"
+    )
+
+    return emails
 
 
 if __name__ == "__main__":
     # quick sanity check
-    for e in fetch_recent_emails(limit=5, unread_only=False):
+    emails = fetch_recent_emails(limit=5, unread_only=False)
+    for e in emails:
         print("FROM:", e["from"])
         print("SUBJECT:", e["subject"])
         print("DATE:", e["date"])
