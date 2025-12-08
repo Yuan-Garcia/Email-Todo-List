@@ -25,7 +25,8 @@ def get_google_creds():
                 return None
             
             flow = InstalledAppFlow.from_client_secrets_file('credentials.json', SCOPES)
-            # 0 means "pick any free port"
+            
+            # specific port to match your Google Cloud Console
             creds = flow.run_local_server(port=5000, open_browser=False)
             
         # Save token for next time
