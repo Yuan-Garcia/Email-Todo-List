@@ -75,7 +75,17 @@ def generate_todo_list(email_dicts):
 
 def main():
     # pull, say, the 20 most recent emails
+    import time
+
+    start = time.perf_counter()
+
+    # ---- code you want to measure ----
     emails = fetch_recent_emails(limit=20)
+    # ----------------------------------
+
+    end = time.perf_counter()
+    print(f"fetch_recent_emails took {end - start:.3f} seconds")
+    print(emails)
     todo_list = generate_todo_list(emails)
     print(todo_list)
 
