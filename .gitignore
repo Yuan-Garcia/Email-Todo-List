@@ -229,3 +229,5 @@ src/classifier/email_classifier_final/
 *.safetensors
 *.pt
 optimizer.pt
+
+token.json
