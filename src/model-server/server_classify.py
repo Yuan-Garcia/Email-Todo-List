@@ -1,6 +1,6 @@
 import requests
 
-def classify_email(email_text, server_url="http://localhost:8000/predict"):
+def classify_email(email_text, server_url="http://localhost:8027/predict"):
     """
     Send email text to the BERT API and return the predicted label.
     """
