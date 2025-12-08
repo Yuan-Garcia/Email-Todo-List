@@ -209,3 +209,8 @@ __marimo__/
 
 *.csv
 .csv
+
+# THIS IS SO IMPORTANT
+.json
+*.json
+
