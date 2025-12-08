@@ -211,4 +211,5 @@ __marimo__/
 .csv
 
 # THIS IS SO IMPORTANT
-token.json
+.json
+*.json
