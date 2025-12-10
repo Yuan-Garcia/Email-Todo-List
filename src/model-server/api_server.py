@@ -6,13 +6,9 @@ from transformers import BertForSequenceClassification, BertTokenizer
 app = FastAPI(title="Email Classification API")
 
 # Load tokenizer and model
-# Use the local tokenizer directory for tokenizer config
-TOKENIZER_DIR = "src/classifier/my_email_classifier"
-# Use a pre-trained BERT model (replace with your fine-tuned model path when available)
-MODEL_NAME = "bert-base-uncased"
-
-tokenizer = BertTokenizer.from_pretrained(TOKENIZER_DIR)
-model = BertForSequenceClassification.from_pretrained(MODEL_NAME, num_labels=2)
+MODEL_DIR = "src/classifier/my_email_classifier/model.safetensors"
+tokenizer = BertTokenizer.from_pretrained(MODEL_DIR)
+model = BertForSequenceClassification.from_pretrained(MODEL_DIR, device_map="auto")
 model.eval()
 
 # Define labels
@@ -28,7 +24,7 @@ def predict(input: EmailInput):
     inputs = tokenizer(input.email_text, return_tensors="pt", truncation=True, padding=True)
     with torch.no_grad():
         outputs = model(**inputs)
-        # Get the predicted class (0 or 1) using argmax
-        predicted_idx = torch.argmax(outputs.logits, dim=1).item()
-        predicted_label = labels[predicted_idx]
+        probs = torch.sigmoid(outputs.logits)    # Binary classification
+        predicted_val = probs.round().item()
+        predicted_label = labels[int(predicted_val)]
     return {"label": predicted_label}  # ✅ This is exactly the format the client receives

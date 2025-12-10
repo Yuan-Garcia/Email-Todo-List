@@ -60,14 +60,13 @@ def get_email_files_from_directory(directory: str) -> List[tuple]:
     return email_files
 
 
-def combine_ham_folders(easy_ham_dir: str, easy_ham2_dir: str, hard_ham_dir: str) -> List[tuple]:
+def combine_ham_folders(easy_ham_dir: str, easy_ham2_dir: str) -> List[tuple]:
     """
-    Combine email files from all three ham folders.
+    Combine email files from easy_ham folders (excluding hard_ham).
     
     Args:
         easy_ham_dir: Path to easy_ham directory
         easy_ham2_dir: Path to easy_ham_2 directory
-        hard_ham_dir: Path to hard_ham directory
         
     Returns:
         List of tuples (file_path, file_name, difficulty)
@@ -88,12 +87,6 @@ def combine_ham_folders(easy_ham_dir: str, easy_ham2_dir: str, hard_ham_dir: str
         all_emails.append((file_path, filename, 'easy'))
     print(f"Found {len(easy_ham2_files)} files in easy_ham_2")
     
-    # Hard ham
-    hard_ham_files = get_email_files_from_directory(hard_ham_dir)
-    for file_path, filename in hard_ham_files:
-        all_emails.append((file_path, filename, 'hard'))
-    print(f"Found {len(hard_ham_files)} files in hard_ham")
-    
     print(f"Total: {len(all_emails)} email files")
     
     return all_emails
@@ -104,19 +97,18 @@ def process_spam_assassin_dataset(data_dir: str, output_path: str = None) -> pd.
     Process Spam Assassin ham emails, labeling all as casual.
     
     Args:
-        data_dir: Base directory containing easy_ham, easy_ham_2, hard_ham folders
+        data_dir: Base directory containing easy_ham, easy_ham_2 folders
         output_path: Optional path to save intermediate results
         
     Returns:
         DataFrame with processed emails
     """
-    # Construct paths
+    # Construct paths (only easy_ham folders, excluding hard_ham)
     easy_ham_dir = os.path.join(data_dir, 'easy_ham')
     easy_ham2_dir = os.path.join(data_dir, 'easy_ham_2')
-    hard_ham_dir = os.path.join(data_dir, 'hard_ham')
     
     # Collect all email files
-    all_emails = combine_ham_folders(easy_ham_dir, easy_ham2_dir, hard_ham_dir)
+    all_emails = combine_ham_folders(easy_ham_dir, easy_ham2_dir)
     
     processed_emails = []
     errors = 0

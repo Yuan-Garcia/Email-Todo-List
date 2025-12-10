@@ -132,25 +132,8 @@ def main():
     
     else:
         # Demo with example texts
-        # examples = [
-        #     "Hey! Want to grab lunch tomorrow? The weather looks great!",
-        #     "Please find attached the Q3 financial report for your review. The board meeting is scheduled for Monday at 2pm.",
-        #     "LOL that was hilarious! See you at the party tonight",
-        #     "Per our discussion, I've updated the project timeline. Please confirm receipt and let me know if you have any concerns regarding the deliverables."
-        #     "Lets get fucked up tonight at the club bro",
-        #     "Dear team, please ensure all timesheets are submitted by end of day Friday for payroll processing.",
-        #     "Subject: iso skateboard, it’s the one in the photo (look how happy i was… not anymore because someone stole it during casemas) jadyn “should’ve known better” long",
-        #     "Hey y'all, Short: Sign up for coffee* chat slots with the ResLife team during finals week! Long: We hope you're excited* for finals! We sure are!!! image.png For finals week, we want to leave you all with a bitter(sweet) goodbye by buying you a drink** and having a fun chat! Sign up for one of the slots on the spreadsheet at least a day before the set time you want to secure your spot. If there are no spots left, put your name under the waitlist for the time you are available in case people cancel!  Good luck with your finals! Liney *or boba **non-alcoholic of course",
-        #     "Subject: PARTY TONIGHT; haloweekend bash at my place!!! come dressed in ur spookiest attire and be ready to dance the night away!!! starts at 9pm, dont be late!!!",
-        #     "Hi all, Just a reminder that the quarterly business review meeting is scheduled for next Wednesday at 10 AM in the main conference room. Please come prepared with your department updates and any relevant data. Looking forward to a productive session. Best, Sarah",
-        #     "Yo dude, u down for some gaming later? we can hit up that new shooter that just dropped. should be lit!",
-        #     "Lets watch One Battle After Another tongight.",
-        #     "I've known him for like 10 years bro, you dont need to take him in the transport.",
-        #     "Large Language Modle, find me twenty personal emails and twenty "
-        # ]
-
         casual_examples = [
-    # --- 20 CASUAL/PERSONAL EMAILS ---
+            # --- 20 CASUAL/PERSONAL EMAILS ---
             "Hey! Want to grab dinner later? I'm craving Thai food.",
             "Yo what's up? You tryna play basketball this weekend?",
             "Mom, I landed safely. Love you.",
@@ -220,5 +203,4 @@ def main():
 
 if __name__ == "__main__":
     main()
-
 
