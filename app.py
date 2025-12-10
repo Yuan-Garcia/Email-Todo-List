@@ -34,8 +34,7 @@ def clean_email_text(text: str) -> str:
 st.set_page_config(
     page_title="Email to Todo",
     page_icon="",
-    layout="wide",
-    initial_sidebar_state="expanded"
+    layout="wide"
 )
 
 # --- GLASSMORPHISM CSS STYLING ---
@@ -272,39 +271,34 @@ def render_email_card(email, card_type="business"):
                             st.error(f"Download failed: {e}")
 
 
-def render_todo_sidebar():
-    """Render the todo sidebar."""
-    st.markdown("### Todo List")
+def render_todo_panel():
+    """Render the todo panel in the right column."""
+    st.markdown("""
+    <div class="todo-panel-header">
+        <h3 style="margin: 0; color: #f8fafc;">Todo List</h3>
+    </div>
+    """, unsafe_allow_html=True)
     
     # Generate button
-    if st.button("Generate Todos", use_container_width=True):
+    if st.button("Generate Todos", use_container_width=True, key="generate_todos_btn"):
         generate_todos()
     
-    st.markdown("---")
+    st.markdown("<br>", unsafe_allow_html=True)
     
     # Display todos
     if st.session_state.todos:
         # Parse and display the todo list
         todos_text = st.session_state.todos
         st.markdown(f"""
-        <div style="
-            background: rgba(139, 92, 246, 0.1);
-            border: 1px solid rgba(139, 92, 246, 0.2);
-            border-radius: 16px;
-            padding: 1rem;
-            font-size: 0.9rem;
-            color: #e2e8f0;
-            white-space: pre-wrap;
-            max-height: 60vh;
-            overflow-y: auto;
-        ">
+        <div class="todo-panel-content">
 {todos_text}
         </div>
         """, unsafe_allow_html=True)
     else:
         st.markdown("""
-        <div class="empty-state">
-            <p style="color: #64748b;">No todos yet. Fetch emails and click Generate Todos.</p>
+        <div class="todo-panel-empty">
+            <p>No todos yet.</p>
+            <p style="font-size: 0.8rem; opacity: 0.7;">Fetch emails and click Generate Todos.</p>
         </div>
         """, unsafe_allow_html=True)
 
@@ -332,139 +326,129 @@ def render_login_screen():
 
 
 def render_main_app():
-    """Render the main application."""
-    # Header with sidebar toggle hint
-    col1, col2, col3 = st.columns([3, 1, 1])
-    with col1:
+    """Render the main application with two-column layout."""
+    # Header row
+    header_col1, header_col2 = st.columns([4, 1])
+    with header_col1:
         st.markdown('<div class="main-title">Email to Todo</div>', unsafe_allow_html=True)
         st.markdown('<div class="subtitle">Transform your inbox into organized action</div>', unsafe_allow_html=True)
-    with col2:
-        st.markdown("<br>", unsafe_allow_html=True)
-        st.markdown("""
-        <div style="text-align: center; padding: 0.5rem;">
-            <span style="color: #a78bfa; font-size: 0.85rem;">Todos in sidebar</span>
-        </div>
-        """, unsafe_allow_html=True)
-    with col3:
+    with header_col2:
         st.markdown("<br>", unsafe_allow_html=True)
         if st.button("Logout", key="logout"):
             logout()
             st.rerun()
     
-    # Sidebar with Todo List
-    with st.sidebar:
-        render_todo_sidebar()
-        st.markdown("---")
-        st.markdown("""
-        <div style="font-size: 0.75rem; color: #64748b; text-align: center;">
-            Use the arrow at top-left to toggle this sidebar
-        </div>
-        """, unsafe_allow_html=True)
+    # Main two-column layout: Email content (left) + Todo panel (right)
+    email_col, todo_col = st.columns([3, 1])
     
-    # Main content area
-    # Search, Email Count, and Fetch row
-    col1, col2, col3 = st.columns([2, 1, 1])
-    with col1:
-        search = st.text_input(
-            "Search emails",
-            placeholder="Search by sender, subject, or content...",
-            key="search_input",
-            label_visibility="collapsed"
-        )
-        st.session_state.search_query = search
-    with col2:
-        email_limit = st.number_input(
-            "Emails to fetch",
-            min_value=5,
-            max_value=100,
-            value=30,
-            step=5,
-            label_visibility="collapsed"
-        )
-    with col3:
-        if st.button("Fetch Emails", use_container_width=True):
-            fetch_and_classify_emails(limit=email_limit)
-    
-    st.markdown("<br>", unsafe_allow_html=True)
-    
-    # Check if we have emails
-    if not st.session_state.classified_emails:
-        st.markdown("""
-        <div class="glass-card" style="text-align: center; padding: 4rem;">
-            <h3 style="color: #e2e8f0; margin-bottom: 0.5rem;">No emails loaded</h3>
-            <p style="color: #94a3b8;">Click Fetch Emails to scan your inbox and classify messages</p>
-        </div>
-        """, unsafe_allow_html=True)
-        return
-    
-    # Email metrics
-    business_emails = st.session_state.classified_emails.get("business", [])
-    personal_emails = st.session_state.classified_emails.get("personal", [])
-    
-    col1, col2, col3, col4 = st.columns(4)
-    with col1:
-        st.markdown(f"""
-        <div class="metric-card">
-            <div class="metric-value">{len(business_emails) + len(personal_emails)}</div>
-            <div class="metric-label">Total Emails</div>
-        </div>
-        """, unsafe_allow_html=True)
-    with col2:
-        st.markdown(f"""
-        <div class="metric-card" style="border-color: rgba(245, 158, 11, 0.3);">
-            <div class="metric-value" style="color: #fbbf24;">{len(business_emails)}</div>
-            <div class="metric-label">Business</div>
-        </div>
-        """, unsafe_allow_html=True)
-    with col3:
-        st.markdown(f"""
-        <div class="metric-card" style="border-color: rgba(6, 182, 212, 0.3);">
-            <div class="metric-value" style="color: #22d3ee;">{len(personal_emails)}</div>
-            <div class="metric-label">Personal</div>
-        </div>
-        """, unsafe_allow_html=True)
-    with col4:
-        total_attachments = sum(
-            len(e.get("attachments", [])) 
-            for e in business_emails + personal_emails
-        )
-        st.markdown(f"""
-        <div class="metric-card">
-            <div class="metric-value">{total_attachments}</div>
-            <div class="metric-label">Attachments</div>
-        </div>
-        """, unsafe_allow_html=True)
-    
-    st.markdown("<br>", unsafe_allow_html=True)
-    
-    # Tabs for Business/Personal
-    tab_business, tab_personal = st.tabs(["💼 Business", "👤 Personal"])
-    
-    with tab_business:
-        filtered = filter_emails(business_emails, st.session_state.search_query)
-        if filtered:
-            for email in filtered:
-                render_email_card(email, "business")
-        else:
+    # LEFT COLUMN: Email content
+    with email_col:
+        # Search, Email Count, and Fetch row
+        search_col, count_col, fetch_col = st.columns([2, 1, 1])
+        with search_col:
+            search = st.text_input(
+                "Search emails",
+                placeholder="Search by sender, subject, or content...",
+                key="search_input",
+                label_visibility="collapsed"
+            )
+            st.session_state.search_query = search
+        with count_col:
+            email_limit = st.number_input(
+                "Emails to fetch",
+                min_value=5,
+                max_value=100,
+                value=30,
+                step=5,
+                label_visibility="collapsed"
+            )
+        with fetch_col:
+            if st.button("Fetch Emails", use_container_width=True):
+                fetch_and_classify_emails(limit=email_limit)
+        
+        st.markdown("<br>", unsafe_allow_html=True)
+        
+        # Check if we have emails
+        if not st.session_state.classified_emails:
             st.markdown("""
-            <div class="empty-state">
-                <div class="empty-state-icon">💼</div>
-                <p>No business emails found</p>
+            <div class="glass-card" style="text-align: center; padding: 4rem;">
+                <h3 style="color: #e2e8f0; margin-bottom: 0.5rem;">No emails loaded</h3>
+                <p style="color: #94a3b8;">Click Fetch Emails to scan your inbox and classify messages</p>
             </div>
             """, unsafe_allow_html=True)
-    
-    with tab_personal:
-        filtered = filter_emails(personal_emails, st.session_state.search_query)
-        if filtered:
-            for email in filtered:
-                render_email_card(email, "personal")
         else:
-            st.markdown("""
-            <div class="empty-state">
-                <div class="empty-state-icon">👤</div>
-                <p>No personal emails found</p>
-            </div>
-            """, unsafe_allow_html=True)
+            # Email metrics
+            business_emails = st.session_state.classified_emails.get("business", [])
+            personal_emails = st.session_state.classified_emails.get("personal", [])
+            
+            m1, m2, m3, m4 = st.columns(4)
+            with m1:
+                st.markdown(f"""
+                <div class="metric-card">
+                    <div class="metric-value">{len(business_emails) + len(personal_emails)}</div>
+                    <div class="metric-label">Total Emails</div>
+                </div>
+                """, unsafe_allow_html=True)
+            with m2:
+                st.markdown(f"""
+                <div class="metric-card" style="border-color: rgba(245, 158, 11, 0.3);">
+                    <div class="metric-value" style="color: #fbbf24;">{len(business_emails)}</div>
+                    <div class="metric-label">Business</div>
+                </div>
+                """, unsafe_allow_html=True)
+            with m3:
+                st.markdown(f"""
+                <div class="metric-card" style="border-color: rgba(6, 182, 212, 0.3);">
+                    <div class="metric-value" style="color: #22d3ee;">{len(personal_emails)}</div>
+                    <div class="metric-label">Personal</div>
+                </div>
+                """, unsafe_allow_html=True)
+            with m4:
+                total_attachments = sum(
+                    len(e.get("attachments", [])) 
+                    for e in business_emails + personal_emails
+                )
+                st.markdown(f"""
+                <div class="metric-card">
+                    <div class="metric-value">{total_attachments}</div>
+                    <div class="metric-label">Attachments</div>
+                </div>
+                """, unsafe_allow_html=True)
+            
+            st.markdown("<br>", unsafe_allow_html=True)
+            
+            # Tabs for Business/Personal
+            tab_business, tab_personal = st.tabs(["Business", "Personal"])
+            
+            with tab_business:
+                filtered = filter_emails(business_emails, st.session_state.search_query)
+                if filtered:
+                    for email in filtered:
+                        render_email_card(email, "business")
+                else:
+                    st.markdown("""
+                    <div class="empty-state">
+                        <p>No business emails found</p>
+                    </div>
+                    """, unsafe_allow_html=True)
+            
+            with tab_personal:
+                filtered = filter_emails(personal_emails, st.session_state.search_query)
+                if filtered:
+                    for email in filtered:
+                        render_email_card(email, "personal")
+                else:
+                    st.markdown("""
+                    <div class="empty-state">
+                        <p>No personal emails found</p>
+                    </div>
+                    """, unsafe_allow_html=True)
+    
+    # RIGHT COLUMN: Todo panel
+    with todo_col:
+        st.markdown('<div class="todo-panel">', unsafe_allow_html=True)
+        render_todo_panel()
+        st.markdown('</div>', unsafe_allow_html=True)
 
 
 # --- MAIN ---
