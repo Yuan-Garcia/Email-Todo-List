@@ -267,6 +267,77 @@ def render_email_card(email, card_type="business"):
                             st.error(f"Download failed: {e}")
 
 
+def parse_and_render_todos(markdown_text: str):
+    """
+    Parse markdown todo list and render with interactive checkboxes.
+    Supports formats like:
+    - [ ] Task description
+    - **Task** - metadata
+    """
+    if not markdown_text:
+        return
+    
+    # Initialize checkbox state storage if not present
+    if 'todo_checked' not in st.session_state:
+        st.session_state.todo_checked = {}
+    
+    lines = markdown_text.split('\n')
+    current_section = None
+    
+    for i, line in enumerate(lines):
+        stripped = line.strip()
+        
+        # Handle section headers (## or ###)
+        if stripped.startswith('##'):
+            header_text = stripped.lstrip('#').strip()
+            st.markdown(f"**{header_text}**")
+            current_section = header_text
+            continue
+        
+        # Handle checkbox items: - [ ] or - [x]
+        checkbox_match = re.match(r'^-\s*\[([ xX])\]\s*(.+)$', stripped)
+        if checkbox_match:
+            is_checked_in_text = checkbox_match.group(1).lower() == 'x'
+            task_text = checkbox_match.group(2)
+            
+            # Create unique key for this checkbox
+            checkbox_key = f"todo_cb_{i}_{hash(task_text) % 10000}"
+            
+            # Get current checked state (from session state or text)
+            if checkbox_key not in st.session_state.todo_checked:
+                st.session_state.todo_checked[checkbox_key] = is_checked_in_text
+            
+            # Render checkbox
+            checked = st.checkbox(
+                task_text,
+                value=st.session_state.todo_checked[checkbox_key],
+                key=checkbox_key
+            )
+            st.session_state.todo_checked[checkbox_key] = checked
+            continue
+        
+        # Handle bullet points (non-checkbox): - text
+        bullet_match = re.match(r'^-\s+(.+)$', stripped)
+        if bullet_match:
+            task_text = bullet_match.group(1)
+            checkbox_key = f"todo_cb_{i}_{hash(task_text) % 10000}"
+            
+            if checkbox_key not in st.session_state.todo_checked:
+                st.session_state.todo_checked[checkbox_key] = False
+            
+            checked = st.checkbox(
+                task_text,
+                value=st.session_state.todo_checked[checkbox_key],
+                key=checkbox_key
+            )
+            st.session_state.todo_checked[checkbox_key] = checked
+            continue
+        
+        # Handle other non-empty lines (plain text or other markdown)
+        if stripped:
+            st.markdown(stripped)
+
+
 def render_todo_panel():
     """Render the todo panel in the right column."""
     st.markdown("### Todo List")
@@ -277,8 +348,8 @@ def render_todo_panel():
     
     # Display todos
     if st.session_state.todos:
-        # Render as markdown for proper formatting
-        st.markdown(st.session_state.todos)
+        # Parse and render with interactive checkboxes
+        parse_and_render_todos(st.session_state.todos)
     else:
         st.markdown("*No todos yet. Fetch emails and click Generate Todos.*")
 
@@ -323,19 +394,18 @@ def render_main_app():
     
     # LEFT COLUMN: Email content
     with email_col:
-        # Search and Fetch row
-        search_col, fetch_col = st.columns([3, 1])
-        with search_col:
-            search = st.text_input(
-                "Search emails",
-                placeholder="Search by sender, subject, or content...",
-                key="search_input",
-                label_visibility="collapsed"
-            )
-            st.session_state.search_query = search
-        with fetch_col:
-            # Small label for email count
-            st.markdown('<p style="color: #94a3b8; font-size: 0.75rem; margin: 0 0 0.25rem 0;">Emails:</p>', unsafe_allow_html=True)
+        # Row 1: Search input (full width)
+        search = st.text_input(
+            "Search emails",
+            placeholder="Search by sender, subject, or content...",
+            key="search_input",
+            label_visibility="collapsed"
+        )
+        st.session_state.search_query = search
+        
+        # Row 2: Email count + Fetch button (compact)
+        count_col, fetch_col, spacer_col = st.columns([1, 1, 4])
+        with count_col:
             email_limit = st.number_input(
                 "Emails to fetch",
                 min_value=5,
@@ -345,6 +415,7 @@ def render_main_app():
                 label_visibility="collapsed",
                 key="email_count_input"
             )
+        with fetch_col:
             if st.button("Fetch Emails", use_container_width=True):
                 fetch_and_classify_emails(limit=email_limit)
         

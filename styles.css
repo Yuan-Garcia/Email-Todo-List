@@ -480,3 +480,45 @@ h1, h2, h3 {
     margin: 0.5rem 0;
 }
 
+/* === TODO CHECKBOX STYLING === */
+/* Style Streamlit checkboxes in the todo panel for better readability */
+[data-testid="stCheckbox"] {
+    margin-bottom: 0.5rem;
+}
+
+[data-testid="stCheckbox"] label {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.5rem;
+}
+
+[data-testid="stCheckbox"] label span {
+    padding-left: 0;
+}
+
+/* Hanging indent for checkbox text - wrapped text aligns under first line */
+[data-testid="stCheckbox"] label > span:last-child {
+    display: block;
+    padding-left: 0;
+    text-indent: 0;
+    line-height: 1.5;
+}
+
+/* Style completed (checked) items with strikethrough */
+[data-testid="stCheckbox"] input:checked + span + span {
+    text-decoration: line-through;
+    opacity: 0.6;
+}
+
+/* Checkbox container layout for proper alignment */
+[data-testid="stCheckbox"] > div {
+    display: flex;
+    align-items: flex-start;
+}
+
+/* Ensure checkbox input stays at top when text wraps */
+[data-testid="stCheckbox"] input[type="checkbox"] {
+    margin-top: 0.25rem;
+    flex-shrink: 0;
+}
+
