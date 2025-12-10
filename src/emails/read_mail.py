@@ -1,12 +1,15 @@
 import re
 import time
 import base64
-from typing import List, Dict, Optional
+from typing import List, Dict, Optional, Any
 
 from email.header import decode_header, make_header
 from googleapiclient.discovery import build
 
 from .auth import get_creds  # your existing OAuth helper
+
+# Module-level service cache for attachment downloads
+_gmail_service = None
 
 
 # -------------------------------------------------------------------
@@ -138,26 +141,127 @@ def _extract_body_from_payload(payload: Dict) -> str:
     return ""
 
 
+def _extract_attachments(payload: Dict) -> List[Dict[str, Any]]:
+    """
+    Walk a Gmail message payload and extract attachment metadata.
+    
+    Returns a list of dicts:
+    {
+        "filename": str,
+        "mimeType": str,
+        "size": int,
+        "attachmentId": str
+    }
+    """
+    attachments: List[Dict[str, Any]] = []
+    
+    def walk(part: Dict):
+        body = part.get("body", {}) or {}
+        filename = part.get("filename", "")
+        attachment_id = body.get("attachmentId")
+        
+        # If there's an attachmentId and a filename, it's an attachment
+        if attachment_id and filename:
+            attachments.append({
+                "filename": filename,
+                "mimeType": part.get("mimeType", "application/octet-stream"),
+                "size": body.get("size", 0),
+                "attachmentId": attachment_id,
+            })
+        
+        for child in part.get("parts", []) or []:
+            walk(child)
+    
+    walk(payload)
+    return attachments
+
+
+def _get_file_icon(mime_type: str, filename: str) -> str:
+    """Return an emoji icon based on file type."""
+    mime_lower = mime_type.lower()
+    filename_lower = filename.lower()
+    
+    if mime_lower.startswith("image/"):
+        return "🖼️"
+    elif mime_lower == "application/pdf" or filename_lower.endswith(".pdf"):
+        return "📄"
+    elif mime_lower.startswith("video/"):
+        return "🎬"
+    elif mime_lower.startswith("audio/"):
+        return "🎵"
+    elif "spreadsheet" in mime_lower or filename_lower.endswith((".xlsx", ".xls", ".csv")):
+        return "📊"
+    elif "document" in mime_lower or filename_lower.endswith((".doc", ".docx")):
+        return "📝"
+    elif "presentation" in mime_lower or filename_lower.endswith((".ppt", ".pptx")):
+        return "📽️"
+    elif "zip" in mime_lower or "compressed" in mime_lower or filename_lower.endswith((".zip", ".rar", ".7z")):
+        return "🗜️"
+    elif "text/" in mime_lower:
+        return "📃"
+    else:
+        return "📎"
+
+
+def download_attachment(message_id: str, attachment_id: str) -> bytes:
+    """
+    Download an attachment by message ID and attachment ID.
+    
+    Returns the raw bytes of the attachment.
+    """
+    global _gmail_service
+    
+    if _gmail_service is None:
+        creds = get_creds()
+        _gmail_service = build("gmail", "v1", credentials=creds)
+    
+    attachment = _gmail_service.users().messages().attachments().get(
+        userId="me",
+        messageId=message_id,
+        id=attachment_id
+    ).execute()
+    
+    data = attachment.get("data", "")
+    # Pad for base64 decoding
+    missing = len(data) % 4
+    if missing:
+        data += "=" * (4 - missing)
+    
+    return base64.urlsafe_b64decode(data)
+
+
 # -------------------------------------------------------------------
 # Main API
 # -------------------------------------------------------------------
 
-def fetch_recent_emails(limit: int = 20, unread_only: bool = False) -> List[Dict[str, str]]:
+def fetch_recent_emails(limit: int = 20, unread_only: bool = False) -> List[Dict[str, Any]]:
     """
     Fetch recent emails via the Gmail HTTP API.
 
     Returns a list of dicts:
     {
+        "id": ...,           # Gmail message ID (for attachment downloads)
         "from": ...,
         "subject": ...,
         "date": ...,
-        "body": ...   # reply-stripped plain text body
+        "body": ...,         # reply-stripped plain text body
+        "attachments": [     # list of attachment metadata
+            {
+                "filename": str,
+                "mimeType": str,
+                "size": int,
+                "attachmentId": str,
+                "icon": str   # emoji icon for the file type
+            }
+        ]
     }
 
     Args:
         limit: Max number of recent messages to return.
         unread_only: If True, only fetch messages matching is:unread.
     """
+    global _gmail_service
+    
     t0 = time.perf_counter()
 
     # --- Auth + service build ---
@@ -165,6 +269,7 @@ def fetch_recent_emails(limit: int = 20, unread_only: bool = False) -> List[Dict
     t_auth = time.perf_counter()
 
     service = build("gmail", "v1", credentials=creds)
+    _gmail_service = service  # Cache for attachment downloads
     t_service = time.perf_counter()
 
     # --- List message IDs ---
@@ -196,7 +301,7 @@ def fetch_recent_emails(limit: int = 20, unread_only: bool = False) -> List[Dict
         return []
 
     # --- Fetch each message (still fast over HTTP) ---
-    emails: List[Dict[str, str]] = []
+    emails: List[Dict[str, Any]] = []
     t_fetch_start = time.perf_counter()
 
     for mid in ids:
@@ -215,13 +320,20 @@ def fetch_recent_emails(limit: int = 20, unread_only: bool = False) -> List[Dict
 
         body_raw = _extract_body_from_payload(payload)
         body = strip_replies(body_raw)
+        
+        # Extract attachments with icons
+        attachments = _extract_attachments(payload)
+        for att in attachments:
+            att["icon"] = _get_file_icon(att["mimeType"], att["filename"])
 
         emails.append(
             {
+                "id": mid,
                 "from": from_,
                 "subject": subject,
                 "date": date,
                 "body": body,
+                "attachments": attachments,
             }
         )
 
@@ -244,8 +356,13 @@ if __name__ == "__main__":
     # quick sanity check
     emails = fetch_recent_emails(limit=5, unread_only=False)
     for e in emails:
+        print("ID:", e["id"])
         print("FROM:", e["from"])
         print("SUBJECT:", e["subject"])
         print("DATE:", e["date"])
         print("BODY PREVIEW:", e["body"].replace("\n", " ")[:200], "...")
+        if e["attachments"]:
+            print("ATTACHMENTS:")
+            for att in e["attachments"]:
+                print(f"  {att['icon']} {att['filename']} ({att['mimeType']}, {att['size']} bytes)")
         print("-" * 40)

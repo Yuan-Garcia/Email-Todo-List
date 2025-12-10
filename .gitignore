@@ -225,3 +225,5 @@ venv/
 credentials.json
 token.json
 .env
+
+*Data/

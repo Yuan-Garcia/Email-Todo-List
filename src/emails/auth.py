@@ -48,7 +48,7 @@ def get_creds() -> Credentials:
             # then Google redirects back to localhost and the script continues.
             creds = flow.run_local_server(
                 host="localhost",
-                port=0,
+                port=8552,
                 open_browser=True,
             )
 
