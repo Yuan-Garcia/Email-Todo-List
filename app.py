@@ -323,8 +323,8 @@ def render_main_app():
     
     # LEFT COLUMN: Email content
     with email_col:
-        # Search, Email Count, and Fetch row
-        search_col, count_col, fetch_col = st.columns([2, 1, 1])
+        # Search and Fetch row
+        search_col, fetch_col = st.columns([3, 1])
         with search_col:
             search = st.text_input(
                 "Search emails",
@@ -333,16 +333,18 @@ def render_main_app():
                 label_visibility="collapsed"
             )
             st.session_state.search_query = search
-        with count_col:
+        with fetch_col:
+            # Small label for email count
+            st.markdown('<p style="color: #94a3b8; font-size: 0.75rem; margin: 0 0 0.25rem 0;">Emails:</p>', unsafe_allow_html=True)
             email_limit = st.number_input(
                 "Emails to fetch",
                 min_value=5,
                 max_value=100,
                 value=30,
                 step=5,
-                label_visibility="collapsed"
+                label_visibility="collapsed",
+                key="email_count_input"
             )
-        with fetch_col:
             if st.button("Fetch Emails", use_container_width=True):
                 fetch_and_classify_emails(limit=email_limit)
         

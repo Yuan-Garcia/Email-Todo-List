@@ -40,14 +40,14 @@ def generate_todo_list(email_dicts):
     user_email_prompt = f"""
     You are given a list of emails. For each email:
 
-    1. Extract **all explicit tasks** (e.g., “submit your forms,” “schedule a meeting,” “send the report”).
-    2. Infer **implicit tasks** when reasonable (e.g., if someone is asking a question, the task might be “respond with X”).
+    1. Extract **all explicit tasks** (e.g., "submit your forms," "schedule a meeting," "send the report").
+    2. Infer **implicit tasks** when reasonable (e.g., if someone is asking a question, the task might be "respond with X").
     3. Prioritize tasks by urgency and importance using:
 
     * time deadlines
     * sender authority (e.g., boss > colleague > automated marketing)
     * relevance to ongoing responsibilities
-    * urgency implied by language (“asap”, “need this today”, etc.)
+    * urgency implied by language ("asap", "need this today", etc.)
     4. Deduplicate similar tasks across emails.
     5. Write tasks in clear, concise, imperative style.
     6. For each task, include:
@@ -55,27 +55,74 @@ def generate_todo_list(email_dicts):
     * **Description**
     * **Source email** (sender + subject)
     * **Priority**: High | Medium | Low
-    * **Deadline**: Explicit or inferred (or “None”)
+    * **Deadline**: Explicit or inferred (or "None")
 
-    write all deadlines in relation to the current time: {now}
+    Write all deadlines in relation to the current time: {now}
 
-    Your output **must** be formatted as:
+    Your output **must** be formatted in **Markdown** as follows:
 
-    ```
-    TO-DO LIST
-    ====================
+    ## To-Do List
 
-    1. [PRIORITY] Task description  
-    - Source: <sender> — <subject>  
-    - Deadline: <TODAY, TOMORROW, date or None>
+    ### High Priority
+    - [ ] **Task description**
+    - *Source:* sender — subject
+    - *Deadline:* TODAY/TOMORROW/date/None
 
-    2. ...
-    ```
+    ### Medium Priority
+    - [ ] **Task description**
+    - *Source:* sender — subject
+    - *Deadline:* date/None
+
+    ### Low Priority
+    - [ ] **Task description**
+    - *Source:* sender — subject
+    - *Deadline:* None
+
+    If there are no tasks for a priority level, omit that section.
 
     **Emails:**
 
     {email_dicts}
     """
+    # user_email_prompt = f"""
+    # You are given a list of emails. For each email:
+
+    # 1. Extract **all explicit tasks** (e.g., “submit your forms,” “schedule a meeting,” “send the report”).
+    # 2. Infer **implicit tasks** when reasonable (e.g., if someone is asking a question, the task might be “respond with X”).
+    # 3. Prioritize tasks by urgency and importance using:
+
+    # * time deadlines
+    # * sender authority (e.g., boss > colleague > automated marketing)
+    # * relevance to ongoing responsibilities
+    # * urgency implied by language (“asap”, “need this today”, etc.)
+    # 4. Deduplicate similar tasks across emails.
+    # 5. Write tasks in clear, concise, imperative style.
+    # 6. For each task, include:
+
+    # * **Description**
+    # * **Source email** (sender + subject)
+    # * **Priority**: High | Medium | Low
+    # * **Deadline**: Explicit or inferred (or “None”)
+
+    # write all deadlines in relation to the current time: {now}
+
+    # Your output **must** be formatted as:
+
+    # ```
+    # TO-DO LIST
+    # ====================
+
+    # 1. [PRIORITY] Task description  
+    # - Source: <sender> — <subject>  
+    # - Deadline: <TODAY, TOMORROW, date or None>
+
+    # 2. ...
+    # ```
+
+    # **Emails:**
+
+    # {email_dicts}
+    # """
 
     return call_LLM(system_email_prompt, user_email_prompt)
 
