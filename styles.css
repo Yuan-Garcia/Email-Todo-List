@@ -16,6 +16,18 @@
 footer {visibility: hidden;}
 header {visibility: hidden;}
 
+/* Reduce main container padding for tight layout */
+.stMainBlockContainer {
+    padding-top: 1rem !important;
+    padding-left: 2rem !important;
+    padding-right: 2rem !important;
+}
+
+.block-container {
+    padding-top: 1rem !important;
+    max-width: 100% !important;
+}
+
 /* === GLASS CARD BASE === */
 .glass-card {
     background: rgba(255, 255, 255, 0.05);

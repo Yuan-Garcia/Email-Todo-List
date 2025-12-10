@@ -127,10 +127,6 @@ def fetch_and_classify_emails(limit: int = 30):
         st.session_state.emails = emails
         st.session_state.classified_emails = classified
         
-        business_count = len(classified.get("business", []))
-        personal_count = len(classified.get("personal", []))
-        st.success(f"Found {business_count} business and {personal_count} personal emails.")
-        
     except Exception as e:
         st.error(f"Error fetching emails: {e}")
 
@@ -273,34 +269,18 @@ def render_email_card(email, card_type="business"):
 
 def render_todo_panel():
     """Render the todo panel in the right column."""
-    st.markdown("""
-    <div class="todo-panel-header">
-        <h3 style="margin: 0; color: #f8fafc;">Todo List</h3>
-    </div>
-    """, unsafe_allow_html=True)
+    st.markdown("### Todo List")
     
     # Generate button
     if st.button("Generate Todos", use_container_width=True, key="generate_todos_btn"):
         generate_todos()
     
-    st.markdown("<br>", unsafe_allow_html=True)
-    
     # Display todos
     if st.session_state.todos:
-        # Parse and display the todo list
-        todos_text = st.session_state.todos
-        st.markdown(f"""
-        <div class="todo-panel-content">
-{todos_text}
-        </div>
-        """, unsafe_allow_html=True)
+        # Render as markdown for proper formatting
+        st.markdown(st.session_state.todos)
     else:
-        st.markdown("""
-        <div class="todo-panel-empty">
-            <p>No todos yet.</p>
-            <p style="font-size: 0.8rem; opacity: 0.7;">Fetch emails and click Generate Todos.</p>
-        </div>
-        """, unsafe_allow_html=True)
+        st.markdown("*No todos yet. Fetch emails and click Generate Todos.*")
 
 
 def render_login_screen():
@@ -446,9 +426,7 @@ def render_main_app():
     
     # RIGHT COLUMN: Todo panel
     with todo_col:
-        st.markdown('<div class="todo-panel">', unsafe_allow_html=True)
         render_todo_panel()
-        st.markdown('</div>', unsafe_allow_html=True)
 
 
 # --- MAIN ---
