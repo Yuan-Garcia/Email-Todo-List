@@ -40,6 +40,10 @@ CASUAL_PATTERNS = {
         # Vacation / personal time
         r"\b(vacation|holiday|road trip|weekend getaway)\b",
         r"\b(beach|camping|hiking|fishing trip)\b",
+        
+        # Religious/holiday (common in Enron Texas culture)
+        r"\b(god bless|prayers?|church|sermon)\b",
+        r"\b(easter|thanksgiving dinner|christmas party)\b",
     ],
     
     # Medium confidence (weight: 1.0)
@@ -79,6 +83,18 @@ CASUAL_PATTERNS = {
         
         # Pets
         r"\b(my (dog|cat|pet)|the (dog|cat)|puppy|kitten)\b",
+        
+        # Personal errands
+        r"\b(pick up|drop off|grocery|dry clean|pharmacy|doctor)\b",
+        r"\b(appointment|dentist|vet|haircut)\b",
+        
+        # Casual closings
+        r"\b(later|cheers|peace out?|take it easy|cya)\b",
+        r"\b(gotta go|gotta run|talk later)\b",
+        
+        # More sports / entertainment
+        r"\b(tickets?|seats?)\b.*\b(game|concert|show)\b",
+        r"\b(tee time|golf course|round of golf)\b",
     ],
     
     # Weak signals (weight: 0.5) - need multiple to trigger
@@ -95,40 +111,56 @@ CASUAL_PATTERNS = {
 }
 
 # =============================================================================
-# BUSINESS PATTERNS - Used to avoid false positives
+# BUSINESS PATTERNS - Organized by confidence level (tiered weights)
 # =============================================================================
 
-BUSINESS_PATTERNS = [
-    # Meetings / scheduling
-    r"\b(meeting|conference call|dial[- ]in|teleconference)\b",
-    r"\b(schedule|calendar|agenda|minutes)\b",
-    r"\b(action items?|follow[- ]up|next steps)\b",
+BUSINESS_PATTERNS = {
+    # Strong business signals (weight: -2.0)
+    "strong_business": [
+        # Legal / contracts
+        r"\b(contract|agreement|invoice|purchase order|NDA)\b",
+        r"\b(quarterly|annual report|10-?K|SEC filing)\b",
+        r"\b(confidential|privileged|attorney[- ]client)\b",
+        
+        # Financial terms
+        r"\b(fiscal|budget|revenue|profit|variance)\b",
+        r"\b(forecast|projection|estimate)\b",
+        r"\b(deal|transaction|acquisition|merger)\b",
+        
+        # Stakeholders
+        r"\b(client|customer|vendor|supplier|counterparty)\b",
+        r"\b(stakeholder|management|executive|board)\b",
+    ],
     
-    # Deadlines / deliverables
-    r"\b(deadline|deliverable|milestone|due date)\b",
-    r"\b(eod|cob|end of day|close of business)\b",
-    r"\b(asap|urgent|priority|time[- ]sensitive)\b",
+    # Medium business signals (weight: -1.0)
+    "medium_business": [
+        # Meetings / scheduling
+        r"\b(meeting|conference call|dial[- ]in|teleconference)\b",
+        r"\b(schedule|calendar|agenda|minutes)\b",
+        r"\b(action items?|follow[- ]up|next steps)\b",
+        
+        # Deadlines / deliverables
+        r"\b(deadline|deliverable|milestone|due date)\b",
+        r"\b(eod|cob|end of day|close of business)\b",
+        r"\b(asap|urgent|priority|time[- ]sensitive)\b",
+        
+        # Documents / formal communication
+        r"\b(attached|enclosed|per our discussion|as discussed)\b",
+        r"\b(please review|for your (review|approval)|kindly review)\b",
+        r"\b(draft|revision|version|redline)\b",
+        r"\b(proposal)\b",
+        
+        # Formal language
+        r"\b(pursuant to|in accordance with|regarding|re:)\b",
+    ],
     
-    # Documents / formal communication
-    r"\b(contract|agreement|proposal|invoice|purchase order)\b",
-    r"\b(attached|enclosed|per our discussion|as discussed)\b",
-    r"\b(please review|for your (review|approval)|kindly review)\b",
-    r"\b(draft|revision|version|redline)\b",
-    
-    # Financial / business terms
-    r"\b(quarterly|annual|fiscal|budget|revenue|profit)\b",
-    r"\b(forecast|projection|estimate|variance)\b",
-    r"\b(deal|transaction|acquisition|merger)\b",
-    
-    # Stakeholders
-    r"\b(client|customer|vendor|supplier|counterparty)\b",
-    r"\b(stakeholder|management|executive|board)\b",
-    
-    # Formal language
-    r"\b(pursuant to|in accordance with|regarding|re:)\b",
-    r"\b(please advise|please confirm|please let me know)\b",
-    r"\b(respectfully|sincerely|regards|best regards)\b",
-]
+    # Weak business signals (weight: -0.5)
+    "weak_business": [
+        r"\b(regards|sincerely|best regards)\b",
+        r"\b(please advise|please confirm|please let me know)\b",
+        r"\b(best)\b$",  # "Best" at end of email
+    ],
+}
 
 # =============================================================================
 # COMPILE PATTERNS
@@ -137,12 +169,53 @@ BUSINESS_PATTERNS = [
 STRONG_CASUAL = [re.compile(p, re.IGNORECASE) for p in CASUAL_PATTERNS["strong_casual"]]
 MEDIUM_CASUAL = [re.compile(p, re.IGNORECASE) for p in CASUAL_PATTERNS["medium_casual"]]
 WEAK_CASUAL = [re.compile(p, re.IGNORECASE) for p in CASUAL_PATTERNS["weak_casual"]]
-BUSINESS_REGEX = [re.compile(p, re.IGNORECASE) for p in BUSINESS_PATTERNS]
+
+# Tiered business patterns
+STRONG_BUSINESS = [re.compile(p, re.IGNORECASE) for p in BUSINESS_PATTERNS["strong_business"]]
+MEDIUM_BUSINESS = [re.compile(p, re.IGNORECASE) for p in BUSINESS_PATTERNS["medium_business"]]
+WEAK_BUSINESS = [re.compile(p, re.IGNORECASE) for p in BUSINESS_PATTERNS["weak_business"]]
 
 
 # =============================================================================
 # CLASSIFICATION FUNCTIONS
 # =============================================================================
+
+def analyze_subject(text: str) -> Tuple[float, List[str]]:
+    """
+    Extract subject line and return casual/business score modifier.
+    
+    Args:
+        text: Full email text (may contain Subject: header)
+        
+    Returns:
+        Tuple of (score_modifier, matched_patterns)
+    """
+    subject_match = re.search(r"subject:\s*(.+?)(\n|$)", text, re.IGNORECASE)
+    if not subject_match:
+        return 0.0, []
+    
+    subject = subject_match.group(1)
+    score = 0.0
+    matched = []
+    
+    # Multiple forwards = likely joke/chain email
+    fw_count = subject.lower().count("fw:") + subject.lower().count("fwd:")
+    if fw_count >= 2:
+        score += 2.0
+        matched.append(f"SUBJ: multiple forwards ({fw_count}x)")
+    
+    # Business subject keywords
+    if re.search(r"\b(Q[1-4]|budget|report|meeting|action|agenda)\b", subject, re.IGNORECASE):
+        score -= 1.0
+        matched.append("SUBJ: business keyword")
+    
+    # Casual subject keywords
+    if re.search(r"\b(joke|funny|fwd|fw|re: re:|lol|haha)\b", subject, re.IGNORECASE):
+        score += 1.0
+        matched.append("SUBJ: casual keyword")
+    
+    return score, matched
+
 
 def classify_email(email_text: str) -> Tuple[bool, float, List[str]]:
     """
@@ -161,31 +234,53 @@ def classify_email(email_text: str) -> Tuple[bool, float, List[str]]:
     matched = []
     score = 0.0
     
-    # Check business patterns (negative score - makes it less likely to be casual)
-    business_count = 0
-    for regex in BUSINESS_REGEX:
+    # Analyze subject line first
+    subject_score, subject_matched = analyze_subject(text)
+    score += subject_score
+    matched.extend(subject_matched)
+    
+    # Check tiered business patterns (negative scores)
+    # Strong business signals (weight: -2.0)
+    for regex in STRONG_BUSINESS:
+        if regex.search(text):
+            score -= 2.0
+            matched.append(f"BIZ_STRONG: {regex.pattern[:30]}...")
+    
+    # Medium business signals (weight: -1.0)
+    for regex in MEDIUM_BUSINESS:
         if regex.search(text):
             score -= 1.0
-            business_count += 1
-            matched.append(f"BIZ: {regex.pattern[:30]}...")
+            matched.append(f"BIZ_MED: {regex.pattern[:30]}...")
+    
+    # Weak business signals (weight: -0.5)
+    weak_biz_count = sum(1 for r in WEAK_BUSINESS if r.search(text))
+    if weak_biz_count >= 1:
+        score -= 0.5 * weak_biz_count
+        matched.append(f"BIZ_WEAK: {weak_biz_count} patterns")
     
     # Strong casual signals (weight: 2.0)
     for regex in STRONG_CASUAL:
         if regex.search(text):
             score += 2.0
-            matched.append(f"STRONG: {regex.pattern[:30]}...")
+            matched.append(f"CASUAL_STRONG: {regex.pattern[:30]}...")
     
     # Medium casual signals (weight: 1.0)
     for regex in MEDIUM_CASUAL:
         if regex.search(text):
             score += 1.0
-            matched.append(f"MEDIUM: {regex.pattern[:30]}...")
+            matched.append(f"CASUAL_MED: {regex.pattern[:30]}...")
     
-    # Weak signals - need multiple to contribute
+    # Weak casual signals - need multiple to contribute
     weak_count = sum(1 for r in WEAK_CASUAL if r.search(text))
     if weak_count >= 2:
         score += 0.5 * weak_count
-        matched.append(f"WEAK: {weak_count} patterns matched")
+        matched.append(f"CASUAL_WEAK: {weak_count} patterns")
+    
+    # Short email handling: boost casual confidence for short casual messages
+    word_count = len(text.split())
+    if word_count <= 10 and score > 0:
+        score += 0.5
+        matched.append(f"SHORT_BOOST: {word_count} words")
     
     # Determine classification
     is_casual = score > 0
