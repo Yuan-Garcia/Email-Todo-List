@@ -392,23 +392,46 @@ h1, h2, h3 {
     opacity: 0.5;
 }
 
-/* === SIDEBAR TOGGLE BUTTON === */
-.sidebar-toggle-btn {
-    position: fixed;
-    left: 10px;
-    top: 50%;
-    transform: translateY(-50%);
-    background: rgba(139, 92, 246, 0.8);
-    border: 1px solid rgba(139, 92, 246, 0.5);
-    border-radius: 8px;
-    padding: 0.5rem;
-    cursor: pointer;
-    z-index: 1000;
-    transition: all 0.3s ease;
+/* === SIDEBAR TOGGLE BUTTON (Streamlit Built-in) === */
+/* Style the collapsed sidebar expand button */
+button[data-testid="collapsedControl"] {
+    background: linear-gradient(135deg, rgba(139, 92, 246, 0.9) 0%, rgba(168, 85, 247, 0.9) 100%) !important;
+    border: 1px solid rgba(139, 92, 246, 0.5) !important;
+    border-radius: 0 12px 12px 0 !important;
+    width: 28px !important;
+    height: 80px !important;
+    left: 0 !important;
+    top: 50% !important;
+    transform: translateY(-50%) !important;
+    position: fixed !important;
+    z-index: 999999 !important;
+    box-shadow: 4px 0 20px rgba(139, 92, 246, 0.4) !important;
+    transition: all 0.3s ease !important;
 }
 
-.sidebar-toggle-btn:hover {
-    background: rgba(139, 92, 246, 1);
-    box-shadow: 0 4px 15px rgba(139, 92, 246, 0.5);
+button[data-testid="collapsedControl"]:hover {
+    background: linear-gradient(135deg, rgba(139, 92, 246, 1) 0%, rgba(168, 85, 247, 1) 100%) !important;
+    box-shadow: 6px 0 30px rgba(139, 92, 246, 0.6) !important;
+    width: 32px !important;
+}
+
+/* Style the arrow icon inside */
+button[data-testid="collapsedControl"] svg {
+    color: white !important;
+    width: 18px !important;
+    height: 18px !important;
+}
+
+/* Style the sidebar collapse button (when sidebar is open) */
+button[data-testid="baseButton-headerNoPadding"] {
+    background: rgba(139, 92, 246, 0.2) !important;
+    border: 1px solid rgba(139, 92, 246, 0.3) !important;
+    border-radius: 8px !important;
+    transition: all 0.3s ease !important;
+}
+
+button[data-testid="baseButton-headerNoPadding"]:hover {
+    background: rgba(139, 92, 246, 0.4) !important;
+    border-color: rgba(139, 92, 246, 0.5) !important;
 }
 

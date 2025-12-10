@@ -6,8 +6,29 @@ A beautiful Streamlit frontend for email classification and todo generation.
 import streamlit as st
 import os
 import html
+import re
 from pathlib import Path
 from datetime import datetime
+
+
+def clean_email_text(text: str) -> str:
+    """
+    Clean email text by removing any leftover HTML fragments.
+    This is a safety net for display purposes.
+    """
+    if not text:
+        return ""
+    
+    # Remove any leftover HTML tag fragments
+    text = re.sub(r"<[^>]*>", "", text)  # Full tags
+    text = re.sub(r"/?[a-zA-Z]+>", "", text)  # Closing fragments like "/div>"
+    text = re.sub(r"</?[a-zA-Z]+", "", text)  # Opening fragments like "</div"
+    text = re.sub(r"[<>]", "", text)  # Orphaned brackets
+    
+    # Clean up whitespace
+    text = re.sub(r"\s+", " ", text)
+    
+    return text.strip()
 
 # --- PAGE CONFIGURATION ---
 st.set_page_config(
@@ -177,8 +198,9 @@ def render_email_card(email, card_type="business"):
         pass
     date_escaped = html.escape(date_str)
     
-    # Truncate and escape body for preview
+    # Clean, truncate and escape body for preview
     body = str(email.get("body", ""))
+    body = clean_email_text(body)  # Remove any leftover HTML fragments
     body_preview = body[:200] + "..." if len(body) > 200 else body
     body_preview_escaped = html.escape(body_preview)
     

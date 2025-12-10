@@ -69,24 +69,51 @@ def strip_replies(email_text: str) -> str:
 
 def _html_to_text(html: str) -> str:
     """
-    Very lightweight HTML -> plain text conversion for email bodies.
-    Good enough for feeding into an LLM.
+    Convert HTML to plain text for email bodies.
+    Handles various edge cases and malformed HTML.
     """
-    # Remove script/style blocks
-    html = re.sub(r"(?is)<(script|style).*?>.*?(</\1>)", "", html)
-    # Drop tags
-    text = re.sub(r"<[^>]+>", "", html)
-    # Unescape a few common entities
+    if not html:
+        return ""
+    
+    # First, unescape HTML entities so we can properly match tags
     text = (
-        text.replace("&nbsp;", " ")
+        html.replace("&nbsp;", " ")
             .replace("&amp;", "&")
             .replace("&lt;", "<")
             .replace("&gt;", ">")
             .replace("&quot;", '"')
             .replace("&#39;", "'")
+            .replace("&apos;", "'")
     )
-    # Collapse whitespace
-    text = re.sub(r"\s+", " ", text)
+    
+    # Remove script/style blocks entirely
+    text = re.sub(r"(?is)<(script|style)[^>]*>.*?</\1>", "", text)
+    
+    # Remove HTML comments
+    text = re.sub(r"<!--.*?-->", "", text, flags=re.DOTALL)
+    
+    # Replace common block elements with newlines for better formatting
+    text = re.sub(r"<br\s*/?>", "\n", text, flags=re.IGNORECASE)
+    text = re.sub(r"</p>", "\n", text, flags=re.IGNORECASE)
+    text = re.sub(r"</div>", "\n", text, flags=re.IGNORECASE)
+    text = re.sub(r"</tr>", "\n", text, flags=re.IGNORECASE)
+    text = re.sub(r"</li>", "\n", text, flags=re.IGNORECASE)
+    
+    # Remove all remaining HTML tags (including malformed ones)
+    text = re.sub(r"<[^>]*>", "", text)
+    
+    # Clean up any leftover tag fragments (e.g., "/div", "div>")
+    text = re.sub(r"/?[a-zA-Z]+>", "", text)  # Matches "div>", "/div>", etc.
+    text = re.sub(r"</?[a-zA-Z]+", "", text)  # Matches "</div", "<div", etc.
+    
+    # Remove any remaining angle brackets that might be orphaned
+    text = re.sub(r"[<>]", "", text)
+    
+    # Collapse multiple whitespace/newlines
+    text = re.sub(r"[ \t]+", " ", text)  # Collapse spaces/tabs
+    text = re.sub(r"\n\s*\n", "\n\n", text)  # Collapse multiple newlines
+    text = re.sub(r"\n{3,}", "\n\n", text)  # Max 2 consecutive newlines
+    
     return text.strip()
 
 
