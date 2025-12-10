@@ -1,6 +1,7 @@
 from .call_LLM import call_LLM
 from ..emails.read_mail import fetch_recent_emails
 from ..classifier.classify import classify
+from datetime import datetime
 
 
 
@@ -26,6 +27,9 @@ def format_emails_for_prompt(email_dicts):
 
 
 def generate_todo_list(email_dicts):
+    # tell the LLM what time it is
+    now = datetime.now()
+
     system_email_prompt = """
     You are an assistant that converts raw emails into a concise, prioritized to-do list.
     Your goal is to analyze the content of each email, infer the sender’s intent, 
@@ -53,6 +57,8 @@ def generate_todo_list(email_dicts):
     * **Priority**: High | Medium | Low
     * **Deadline**: Explicit or inferred (or “None”)
 
+    write all deadlines in relation to the current time: {now}
+
     Your output **must** be formatted as:
 
     ```
@@ -61,7 +67,7 @@ def generate_todo_list(email_dicts):
 
     1. [PRIORITY] Task description  
     - Source: <sender> — <subject>  
-    - Deadline: <date or None>
+    - Deadline: <TODAY, TOMORROW, date or None>
 
     2. ...
     ```
@@ -77,15 +83,21 @@ def main():
     # pull, say, the 20 most recent emails
     import time
 
-    start = time.perf_counter()
+    
 
     emails = fetch_recent_emails(limit=20)
-    buisness_emails = classify(emails)
-    todo_list = generate_todo_list(buisness_emails)
-    print(todo_list)
 
+
+
+    buisness_emails = classify(emails)
+
+    start = time.perf_counter()
+    todo_list = generate_todo_list(buisness_emails)
     end = time.perf_counter()
     print(f"todo_list took {end - start:.3f} seconds")
+    print(todo_list)
+
+
 
 
 if __name__ == "__main__":
