@@ -1,6 +1,6 @@
 from .call_LLM import call_LLM
 from ..emails.read_mail import fetch_recent_emails
-
+from ..classifier.classify import classify
 
 
 
@@ -79,15 +79,13 @@ def main():
 
     start = time.perf_counter()
 
-    # ---- code you want to measure ----
     emails = fetch_recent_emails(limit=20)
-    # ----------------------------------
+    buisness_emails = classify(emails)
+    todo_list = generate_todo_list(buisness_emails)
+    print(todo_list)
 
     end = time.perf_counter()
-    print(f"fetch_recent_emails took {end - start:.3f} seconds")
-    print(emails)
-    todo_list = generate_todo_list(emails)
-    print(todo_list)
+    print(f"todo_list took {end - start:.3f} seconds")
 
 
 if __name__ == "__main__":
