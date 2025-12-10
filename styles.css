@@ -28,56 +28,17 @@ header {visibility: hidden;}
     max-width: 100% !important;
 }
 
-/* === APP HEADER LAYOUT === */
-.app-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: flex-start;
-    margin-bottom: 0.5rem;
-}
-
-/* Logout container - positioned absolute at top right */
-.logout-container {
-    position: fixed;
-    top: 0.75rem;
-    right: 2rem;
-    z-index: 1000;
-}
-
-.logout-container button {
+/* === LOGOUT BUTTON STYLING === */
+/* Style logout button in the header */
+[data-testid="stHorizontalBlock"]:first-child button {
     background: rgba(239, 68, 68, 0.15) !important;
     border: 1px solid rgba(239, 68, 68, 0.3) !important;
     color: #fca5a5 !important;
 }
 
-.logout-container button:hover {
+[data-testid="stHorizontalBlock"]:first-child button:hover {
     background: rgba(239, 68, 68, 0.25) !important;
     border-color: rgba(239, 68, 68, 0.5) !important;
-}
-
-/* === EMAIL COUNT INPUT WRAPPER === */
-.email-count-wrapper {
-    max-width: 200px;
-    margin-bottom: 0.75rem;
-}
-
-.email-count-wrapper label {
-    color: #94a3b8 !important;
-    font-size: 0.85rem !important;
-}
-
-.email-count-wrapper input {
-    max-width: 100px !important;
-}
-
-/* === FETCH BUTTON WRAPPER === */
-.fetch-button-wrapper {
-    max-width: 200px;
-    margin-bottom: 1rem;
-}
-
-.fetch-button-wrapper button {
-    width: 100%;
 }
 
 /* === GLASS CARD BASE === */
