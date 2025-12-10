@@ -378,16 +378,22 @@ def render_login_screen():
 
 def render_main_app():
     """Render the main application with two-column layout."""
-    # Header row
-    header_col1, header_col2 = st.columns([4, 1])
-    with header_col1:
-        st.markdown('<div class="main-title">Email to Todo</div>', unsafe_allow_html=True)
-        st.markdown('<div class="subtitle">Transform your inbox into organized action</div>', unsafe_allow_html=True)
-    with header_col2:
-        st.markdown("<br>", unsafe_allow_html=True)
-        if st.button("Logout", key="logout"):
-            logout()
-            st.rerun()
+    # Header with flexbox layout - Title left, Logout button rendered via Streamlit
+    st.markdown('''
+    <div class="app-header">
+        <div>
+            <div class="main-title">Email to Todo</div>
+            <div class="subtitle">Transform your inbox into organized action</div>
+        </div>
+    </div>
+    ''', unsafe_allow_html=True)
+    
+    # Logout button positioned via CSS (rendered in a container that CSS will position)
+    st.markdown('<div class="logout-container">', unsafe_allow_html=True)
+    if st.button("Logout", key="logout"):
+        logout()
+        st.rerun()
+    st.markdown('</div>', unsafe_allow_html=True)
     
     # Main two-column layout: Email content (left) + Todo panel (right)
     email_col, todo_col = st.columns([3, 1])
@@ -403,21 +409,23 @@ def render_main_app():
         )
         st.session_state.search_query = search
         
-        # Row 2: Email count + Fetch button (compact)
-        count_col, fetch_col, spacer_col = st.columns([1, 1, 4])
-        with count_col:
-            email_limit = st.number_input(
-                "Emails to fetch",
-                min_value=5,
-                max_value=100,
-                value=30,
-                step=5,
-                label_visibility="collapsed",
-                key="email_count_input"
-            )
-        with fetch_col:
-            if st.button("Fetch Emails", use_container_width=True):
-                fetch_and_classify_emails(limit=email_limit)
+        # Row 2: Email count (with visible label, compact width via CSS)
+        st.markdown('<div class="email-count-wrapper">', unsafe_allow_html=True)
+        email_limit = st.number_input(
+            "Number of emails to fetch:",
+            min_value=5,
+            max_value=100,
+            value=30,
+            step=5,
+            key="email_count_input"
+        )
+        st.markdown('</div>', unsafe_allow_html=True)
+        
+        # Row 3: Fetch button (on its own row)
+        st.markdown('<div class="fetch-button-wrapper">', unsafe_allow_html=True)
+        if st.button("Fetch Emails", key="fetch_btn"):
+            fetch_and_classify_emails(limit=email_limit)
+        st.markdown('</div>', unsafe_allow_html=True)
         
         st.markdown("<br>", unsafe_allow_html=True)
         
