@@ -1,85 +1,220 @@
-import imaplib
-import ssl
-from email import message_from_bytes
+import re
+import time
+import base64
+from typing import List, Dict, Optional
+
 from email.header import decode_header, make_header
+from googleapiclient.discovery import build
 
-from .auth import get_creds
-
-EMAIL = "ygarcia@g.hmc.edu"   # <- your address
-IMAP_HOST = "imap.gmail.com"
-IMAP_PORT = 993
+from .auth import get_creds  # your existing OAuth helper
 
 
-def _decode_header(value: str) -> str:
+# -------------------------------------------------------------------
+# Helpers
+# -------------------------------------------------------------------
+
+def _decode_header(value: Optional[str]) -> str:
+    """
+    Safely decode MIME-encoded headers (e.g., Subject, From).
+    """
     if not value:
         return ""
     return str(make_header(decode_header(value)))
 
 
-def _get_body(msg) -> str:
-    # Prefer text/plain parts
-    if msg.is_multipart():
-        for part in msg.walk():
-            ctype = part.get_content_type()
-            disp = str(part.get("Content-Disposition") or "").lower()
-            if ctype == "text/plain" and "attachment" not in disp:
-                try:
-                    charset = part.get_content_charset() or "utf-8"
-                    return part.get_payload(decode=True).decode(charset, errors="replace")
-                except Exception:
-                    continue
-        return ""
-    else:
-        try:
-            charset = msg.get_content_charset() or "utf-8"
-            return msg.get_payload(decode=True).decode(charset, errors="replace")
-        except Exception:
-            return ""
-
-
-def fetch_recent_emails(limit: int = 20):
+def strip_replies(email_text: str) -> str:
     """
-    Return a list of the most recent emails as dicts:
+    Given a plain-text email body string, return only the original
+    top-level message, removing quoted replies and older message history.
+    """
+    reply_header_patterns = [
+        re.compile(r"^\s*On .+ wrote:\s*$"),                        # Gmail style
+        re.compile(r"^\s*-{2,}\s*Original Message\s*-{2,}\s*$", re.IGNORECASE),
+        re.compile(r"^\s*From:\s+.+$", re.IGNORECASE),
+        re.compile(r"^\s*Sent:\s+.+$", re.IGNORECASE),
+        re.compile(r"^\s*To:\s+.+$", re.IGNORECASE),
+        re.compile(r"^\s*Subject:\s+.+$", re.IGNORECASE),
+        re.compile(r"^\s*-----Original Message-----\s*$", re.IGNORECASE),
+    ]
+
+    def looks_like_reply_header(line: str) -> bool:
+        return any(p.match(line) for p in reply_header_patterns)
+
+    if not email_text:
+        return ""
+
+    lines = email_text.splitlines()
+    kept: List[str] = []
+
+    for line in lines:
+        # Stop if this line indicates the start of old quoted content
+        if looks_like_reply_header(line):
+            break
+
+        # Skip classic quoted lines (e.g., "> previous message")
+        if line.lstrip().startswith(">"):
+            continue
+
+        kept.append(line)
+
+    # Remove trailing blank lines
+    while kept and not kept[-1].strip():
+        kept.pop()
+
+    return "\n".join(kept).strip()
+
+
+def _html_to_text(html: str) -> str:
+    """
+    Very lightweight HTML -> plain text conversion for email bodies.
+    Good enough for feeding into an LLM.
+    """
+    # Remove script/style blocks
+    html = re.sub(r"(?is)<(script|style).*?>.*?(</\1>)", "", html)
+    # Drop tags
+    text = re.sub(r"<[^>]+>", "", html)
+    # Unescape a few common entities
+    text = (
+        text.replace("&nbsp;", " ")
+            .replace("&amp;", "&")
+            .replace("&lt;", "<")
+            .replace("&gt;", ">")
+            .replace("&quot;", '"')
+            .replace("&#39;", "'")
+    )
+    # Collapse whitespace
+    text = re.sub(r"\s+", " ", text)
+    return text.strip()
+
+
+def _decode_base64(data: str) -> str:
+    """
+    Gmail uses base64url encoding. This helper decodes safely.
+    """
+    if not data:
+        return ""
+    # Pad to correct length for b64 decoder
+    missing = len(data) % 4
+    if missing:
+        data += "=" * (4 - missing)
+    try:
+        return base64.urlsafe_b64decode(data).decode("utf-8", errors="ignore")
+    except Exception:
+        return ""
+
+
+def _extract_body_from_payload(payload: Dict) -> str:
+    """
+    Walk a Gmail message payload and extract the best plain-text body.
+
+    - Prefer text/plain parts
+    - Fall back to text/html (converted to text)
+    - Ignores attachments automatically (Gmail separates them)
+    """
+    plain_parts: List[str] = []
+    html_parts: List[str] = []
+
+    def walk(part: Dict):
+        mime = (part.get("mimeType") or "").lower()
+        body = part.get("body", {}) or {}
+
+        data = body.get("data")
+        if data:
+            decoded = _decode_base64(data)
+            if mime == "text/plain":
+                plain_parts.append(decoded)
+            elif mime == "text/html":
+                html_parts.append(decoded)
+
+        for child in part.get("parts", []) or []:
+            walk(child)
+
+    walk(payload)
+
+    if plain_parts:
+        return "\n".join(plain_parts).strip()
+    if html_parts:
+        return "\n".join(_html_to_text(h) for h in html_parts).strip()
+    return ""
+
+
+# -------------------------------------------------------------------
+# Main API
+# -------------------------------------------------------------------
+
+def fetch_recent_emails(limit: int = 20, unread_only: bool = False) -> List[Dict[str, str]]:
+    """
+    Fetch recent emails via the Gmail HTTP API.
+
+    Returns a list of dicts:
     {
         "from": ...,
         "subject": ...,
         "date": ...,
-        "body": ...
+        "body": ...   # reply-stripped plain text body
     }
+
+    Args:
+        limit: Max number of recent messages to return.
+        unread_only: If True, only fetch messages matching is:unread.
     """
+    t0 = time.perf_counter()
+
+    # --- Auth + service build ---
     creds = get_creds()
-    access_token = creds.token
+    t_auth = time.perf_counter()
 
-    auth_string = f"user={EMAIL}\1auth=Bearer {access_token}\1\1"
+    service = build("gmail", "v1", credentials=creds)
+    t_service = time.perf_counter()
 
-    context = ssl.create_default_context()
-    imap = imaplib.IMAP4_SSL(IMAP_HOST, IMAP_PORT, ssl_context=context)
-    imap.authenticate("XOAUTH2", lambda _: auth_string.encode("utf-8"))
+    # --- List message IDs ---
+    query = "is:unread" if unread_only else None
+    list_kwargs = {
+        "userId": "me",
+        "maxResults": limit,
+        "labelIds": ["INBOX"],
+    }
+    if query:
+        list_kwargs["q"] = query
 
-    imap.select("INBOX")
+    list_resp = service.users().messages().list(**list_kwargs).execute()
+    t_list = time.perf_counter()
 
-    # You can switch "ALL" to "UNSEEN" if you only want unread
-    typ, data = imap.search(None, "ALL")
-    if typ != "OK":
-        imap.logout()
+    messages = list_resp.get("messages", []) or []
+    ids = [m["id"] for m in messages]
+
+    if not ids:
+        t_done = time.perf_counter()
+        print(
+            "[gmail_read] timing breakdown:\n"
+            f"  AUTH:       {t_auth - t0:.3f}s\n"
+            f"  SERVICE:    {t_service - t_auth:.3f}s\n"
+            f"  LIST IDS:   {t_list - t_service:.3f}s\n"
+            f"  FETCH MSGS: 0.000s (no messages)\n"
+            f"  TOTAL:      {t_done - t0:.3f}s\n"
+        )
         return []
 
-    ids = data[0].split()
-    ids = ids[-limit:]  # most recent N
+    # --- Fetch each message (still fast over HTTP) ---
+    emails: List[Dict[str, str]] = []
+    t_fetch_start = time.perf_counter()
 
-    emails = []
-    for msg_id in ids:
-        typ, msg_data = imap.fetch(msg_id, "(BODY.PEEK[])") 
-        if typ != "OK":
-            continue
+    for mid in ids:
+        msg = service.users().messages().get(
+            userId="me",
+            id=mid,
+            format="full",
+        ).execute()
 
-        raw = msg_data[0][1]
-        msg = message_from_bytes(raw)
+        payload = msg.get("payload", {}) or {}
+        headers = {h["name"]: h["value"] for h in payload.get("headers", [])}
 
-        from_ = _decode_header(msg.get("From", ""))
-        subject = _decode_header(msg.get("Subject", ""))
-        date = msg.get("Date", "")
-        body = _get_body(msg)
+        from_ = _decode_header(headers.get("From", ""))
+        subject = _decode_header(headers.get("Subject", ""))
+        date = headers.get("Date", "")
+
+        body_raw = _extract_body_from_payload(payload)
+        body = strip_replies(body_raw)
 
         emails.append(
             {
@@ -90,15 +225,27 @@ def fetch_recent_emails(limit: int = 20):
             }
         )
 
-    imap.logout()
+    t_fetch_end = time.perf_counter()
+    t_done = time.perf_counter()
+
+    print(
+        "[gmail_read] timing breakdown:\n"
+        f"  AUTH:       {t_auth - t0:.3f}s\n"
+        f"  SERVICE:    {t_service - t_auth:.3f}s\n"
+        f"  LIST IDS:   {t_list - t_service:.3f}s\n"
+        f"  FETCH MSGS: {t_fetch_end - t_fetch_start:.3f}s for {len(ids)} msgs\n"
+        f"  TOTAL:      {t_done - t0:.3f}s\n"
+    )
+
     return emails
 
 
 if __name__ == "__main__":
     # quick sanity check
-    for e in fetch_recent_emails(5):
+    emails = fetch_recent_emails(limit=5, unread_only=False)
+    for e in emails:
         print("FROM:", e["from"])
         print("SUBJECT:", e["subject"])
         print("DATE:", e["date"])
-        print("BODY PREVIEW:", e["body"].replace("\n", " "), "...")
+        print("BODY PREVIEW:", e["body"].replace("\n", " ")[:200], "...")
         print("-" * 40)
