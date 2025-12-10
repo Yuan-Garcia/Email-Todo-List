@@ -1,25 +1,23 @@
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
-from transformers import DistilBertTokenizer, DistilBertForSequenceClassification
+from transformers import AutoTokenizer, AutoModelForSequenceClassification  # Changed
 import torch
 
 app = FastAPI(title="Email Classifier API")
 
-
 MODEL_PATH = "./my_email_classifier"
 
 try:
-    tokenizer = DistilBertTokenizer.from_pretrained(MODEL_PATH)
-    model = DistilBertForSequenceClassification.from_pretrained(MODEL_PATH)
-except OSError:
-    # Fallback or error message if the model folder isn't found
+    tokenizer = AutoTokenizer.from_pretrained(MODEL_PATH)
+    model = AutoModelForSequenceClassification.from_pretrained(MODEL_PATH)
+    model.eval()  # Add this for inference mode
+except OSError as e:
     print(f"Error: Could not find model at {MODEL_PATH}. Make sure the folder is copied to the container.")
+    raise e  # Re-raise to prevent server from starting with no model
 
-# 3. Define Input Structure
 class PredictionRequest(BaseModel):
     text: str
 
-# 4. Define Predict Function
 @app.post("/predict")
 async def predict(request: PredictionRequest):
     try:
