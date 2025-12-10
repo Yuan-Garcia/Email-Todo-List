@@ -1,0 +1,414 @@
+/* 
+ * Email to Todo List - Glassmorphism Styles
+ * A modern, frosted-glass aesthetic for the email classifier UI
+ */
+
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700&display=swap');
+
+/* === GLOBAL STYLES === */
+.stApp {
+    background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+    font-family: 'Plus Jakarta Sans', sans-serif;
+}
+
+/* Hide default Streamlit elements */
+#MainMenu {visibility: hidden;}
+footer {visibility: hidden;}
+header {visibility: hidden;}
+
+/* === GLASS CARD BASE === */
+.glass-card {
+    background: rgba(255, 255, 255, 0.05);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border-radius: 20px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    padding: 1.5rem;
+    margin-bottom: 1rem;
+    transition: all 0.3s ease;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+}
+
+.glass-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 12px 40px rgba(0, 0, 0, 0.4);
+    border-color: rgba(255, 255, 255, 0.2);
+}
+
+/* === EMAIL CARDS === */
+.email-card {
+    background: rgba(255, 255, 255, 0.03);
+    backdrop-filter: blur(10px);
+    border-radius: 16px;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    padding: 1.25rem;
+    margin-bottom: 0.75rem;
+    transition: all 0.3s ease;
+}
+
+.email-card:hover {
+    background: rgba(255, 255, 255, 0.06);
+    border-color: rgba(255, 255, 255, 0.15);
+    transform: translateX(4px);
+}
+
+.email-card.business {
+    border-left: 3px solid #f59e0b;
+    box-shadow: 0 4px 20px rgba(245, 158, 11, 0.1);
+}
+
+.email-card.business:hover {
+    box-shadow: 0 6px 30px rgba(245, 158, 11, 0.2);
+}
+
+.email-card.personal {
+    border-left: 3px solid #06b6d4;
+    box-shadow: 0 4px 20px rgba(6, 182, 212, 0.1);
+}
+
+.email-card.personal:hover {
+    box-shadow: 0 6px 30px rgba(6, 182, 212, 0.2);
+}
+
+.email-sender {
+    color: #e2e8f0;
+    font-weight: 600;
+    font-size: 0.95rem;
+    margin-bottom: 0.25rem;
+}
+
+.email-subject {
+    color: #f8fafc;
+    font-weight: 500;
+    font-size: 1.1rem;
+    margin-bottom: 0.5rem;
+}
+
+.email-date {
+    color: #94a3b8;
+    font-size: 0.8rem;
+    margin-bottom: 0.75rem;
+}
+
+.email-body-preview {
+    color: #cbd5e1;
+    font-size: 0.9rem;
+    line-height: 1.5;
+    opacity: 0.8;
+}
+
+/* === BADGES === */
+.badge {
+    display: inline-block;
+    padding: 0.25rem 0.75rem;
+    border-radius: 20px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.badge-business {
+    background: rgba(245, 158, 11, 0.2);
+    color: #fbbf24;
+    border: 1px solid rgba(245, 158, 11, 0.3);
+}
+
+.badge-personal {
+    background: rgba(6, 182, 212, 0.2);
+    color: #22d3ee;
+    border: 1px solid rgba(6, 182, 212, 0.3);
+}
+
+/* === ATTACHMENT CHIPS === */
+.attachment-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    background: rgba(255, 255, 255, 0.08);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 12px;
+    padding: 0.4rem 0.8rem;
+    margin: 0.25rem;
+    font-size: 0.8rem;
+    color: #e2e8f0;
+    transition: all 0.2s ease;
+}
+
+.attachment-chip:hover {
+    background: rgba(255, 255, 255, 0.12);
+    border-color: rgba(255, 255, 255, 0.2);
+}
+
+/* === SIDEBAR STYLING === */
+section[data-testid="stSidebar"] {
+    background: rgba(15, 23, 42, 0.95);
+    backdrop-filter: blur(20px);
+    border-right: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+section[data-testid="stSidebar"] .stMarkdown {
+    color: #e2e8f0;
+}
+
+/* === TODO ITEM === */
+.todo-item {
+    background: rgba(139, 92, 246, 0.1);
+    border: 1px solid rgba(139, 92, 246, 0.2);
+    border-radius: 12px;
+    padding: 1rem;
+    margin-bottom: 0.75rem;
+    transition: all 0.2s ease;
+}
+
+.todo-item:hover {
+    background: rgba(139, 92, 246, 0.15);
+    border-color: rgba(139, 92, 246, 0.3);
+}
+
+.todo-priority-high {
+    border-left: 3px solid #ef4444;
+}
+
+.todo-priority-medium {
+    border-left: 3px solid #f59e0b;
+}
+
+.todo-priority-low {
+    border-left: 3px solid #22c55e;
+}
+
+/* === BUTTONS === */
+.stButton > button {
+    background: linear-gradient(135deg, rgba(139, 92, 246, 0.8) 0%, rgba(168, 85, 247, 0.8) 100%);
+    color: white;
+    border: 1px solid rgba(139, 92, 246, 0.5);
+    border-radius: 12px;
+    padding: 0.6rem 1.5rem;
+    font-weight: 600;
+    font-family: 'Plus Jakarta Sans', sans-serif;
+    transition: all 0.3s ease;
+    box-shadow: 0 4px 15px rgba(139, 92, 246, 0.3);
+}
+
+.stButton > button:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 25px rgba(139, 92, 246, 0.5);
+    border-color: rgba(139, 92, 246, 0.8);
+}
+
+/* Secondary button style */
+.secondary-btn > button {
+    background: rgba(255, 255, 255, 0.08) !important;
+    border: 1px solid rgba(255, 255, 255, 0.15) !important;
+    box-shadow: none !important;
+}
+
+.secondary-btn > button:hover {
+    background: rgba(255, 255, 255, 0.12) !important;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2) !important;
+}
+
+/* === SEARCH INPUT === */
+.stTextInput > div > div > input {
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 12px;
+    color: #f8fafc;
+    padding: 0.75rem 1rem;
+    font-family: 'Plus Jakarta Sans', sans-serif;
+}
+
+.stTextInput > div > div > input:focus {
+    border-color: rgba(139, 92, 246, 0.5);
+    box-shadow: 0 0 20px rgba(139, 92, 246, 0.2);
+}
+
+.stTextInput > div > div > input::placeholder {
+    color: #64748b;
+}
+
+/* === TABS === */
+.stTabs [data-baseweb="tab-list"] {
+    gap: 0.5rem;
+    background: rgba(255, 255, 255, 0.03);
+    border-radius: 16px;
+    padding: 0.5rem;
+}
+
+.stTabs [data-baseweb="tab"] {
+    background: transparent;
+    border-radius: 12px;
+    color: #94a3b8;
+    padding: 0.75rem 1.5rem;
+    font-weight: 500;
+    transition: all 0.3s ease;
+}
+
+.stTabs [data-baseweb="tab"]:hover {
+    background: rgba(255, 255, 255, 0.05);
+    color: #e2e8f0;
+}
+
+.stTabs [aria-selected="true"] {
+    background: rgba(139, 92, 246, 0.2) !important;
+    color: #a78bfa !important;
+    border: 1px solid rgba(139, 92, 246, 0.3);
+}
+
+/* === EXPANDER === */
+.streamlit-expanderHeader {
+    background: rgba(255, 255, 255, 0.03);
+    border-radius: 12px;
+    color: #e2e8f0 !important;
+}
+
+.streamlit-expanderContent {
+    background: rgba(255, 255, 255, 0.02);
+    border-radius: 0 0 12px 12px;
+}
+
+/* === SPINNER === */
+.stSpinner > div {
+    border-color: #8b5cf6 transparent transparent transparent;
+}
+
+/* === TITLE & HEADERS === */
+h1, h2, h3 {
+    color: #f8fafc !important;
+    font-family: 'Plus Jakarta Sans', sans-serif !important;
+}
+
+.main-title {
+    font-size: 2.5rem;
+    font-weight: 700;
+    background: linear-gradient(135deg, #f8fafc 0%, #a78bfa 50%, #22d3ee 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    margin-bottom: 0.5rem;
+}
+
+.subtitle {
+    color: #94a3b8;
+    font-size: 1rem;
+    font-weight: 400;
+    margin-bottom: 2rem;
+}
+
+/* === METRICS === */
+.metric-card {
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 12px;
+    padding: 1rem;
+    text-align: center;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.metric-value {
+    font-size: 2rem;
+    font-weight: 700;
+    color: #f8fafc;
+}
+
+.metric-label {
+    font-size: 0.8rem;
+    color: #94a3b8;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+/* === SCROLLBAR === */
+::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+}
+
+::-webkit-scrollbar-track {
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb {
+    background: rgba(139, 92, 246, 0.3);
+    border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: rgba(139, 92, 246, 0.5);
+}
+
+/* === ALERTS === */
+.stAlert {
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 12px;
+}
+
+/* === DOWNLOAD BUTTON === */
+.download-btn {
+    background: rgba(34, 197, 94, 0.2);
+    border: 1px solid rgba(34, 197, 94, 0.3);
+    color: #4ade80;
+    padding: 0.3rem 0.6rem;
+    border-radius: 8px;
+    font-size: 0.75rem;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.download-btn:hover {
+    background: rgba(34, 197, 94, 0.3);
+}
+
+/* === LOGIN CARD === */
+.login-card {
+    max-width: 400px;
+    margin: 4rem auto;
+    background: rgba(255, 255, 255, 0.05);
+    backdrop-filter: blur(20px);
+    border-radius: 24px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    padding: 3rem;
+    text-align: center;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.4);
+}
+
+.login-icon {
+    font-size: 4rem;
+    margin-bottom: 1rem;
+}
+
+/* === EMPTY STATE === */
+.empty-state {
+    text-align: center;
+    padding: 3rem;
+    color: #64748b;
+}
+
+.empty-state-icon {
+    font-size: 3rem;
+    margin-bottom: 1rem;
+    opacity: 0.5;
+}
+
+/* === SIDEBAR TOGGLE BUTTON === */
+.sidebar-toggle-btn {
+    position: fixed;
+    left: 10px;
+    top: 50%;
+    transform: translateY(-50%);
+    background: rgba(139, 92, 246, 0.8);
+    border: 1px solid rgba(139, 92, 246, 0.5);
+    border-radius: 8px;
+    padding: 0.5rem;
+    cursor: pointer;
+    z-index: 1000;
+    transition: all 0.3s ease;
+}
+
+.sidebar-toggle-btn:hover {
+    background: rgba(139, 92, 246, 1);
+    box-shadow: 0 4px 15px rgba(139, 92, 246, 0.5);
+}
+
