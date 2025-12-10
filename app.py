@@ -246,13 +246,18 @@ def render_email_card(email, card_type="business"):
         # Attachment download buttons
         if attachments:
             st.markdown("**Attachments:**")
-            for att in attachments:
+            for att_idx, att in enumerate(attachments):
                 col1, col2 = st.columns([3, 1])
+                # Create a unique key using email id, attachment index, and full attachment id
+                email_id = email.get('id', 'unknown')
+                att_id = att.get('attachmentId', f'att{att_idx}')
+                unique_key = f"{email_id}_{att_idx}_{att_id}"
+                
                 with col1:
                     filename = html.escape(str(att.get('filename', 'file')))
                     st.markdown(f"[file] **{filename}** ({att.get('size', 0):,} bytes)")
                 with col2:
-                    if st.button(f"Download", key=f"dl_{email.get('id', '')}_{att.get('attachmentId', '')[:8]}"):
+                    if st.button(f"Download", key=f"dl_{unique_key}"):
                         try:
                             from src.emails.read_mail import download_attachment
                             data = download_attachment(email.get("id"), att.get("attachmentId"))
@@ -261,7 +266,7 @@ def render_email_card(email, card_type="business"):
                                 data=data,
                                 file_name=att.get("filename", "attachment"),
                                 mime=att.get("mimeType", "application/octet-stream"),
-                                key=f"save_{email.get('id', '')}_{att.get('attachmentId', '')[:8]}"
+                                key=f"save_{unique_key}"
                             )
                         except Exception as e:
                             st.error(f"Download failed: {e}")
