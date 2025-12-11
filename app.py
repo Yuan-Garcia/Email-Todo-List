@@ -386,7 +386,7 @@ def render_main_app():
     with logout_col:
         if st.button("Logout", key="logout", use_container_width=True):
             logout()
-        st.rerun()
+            st.rerun()
 
     # Main two-column layout: Email content (left) + Todo panel (right)
     email_col, todo_col = st.columns([3, 1])
