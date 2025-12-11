@@ -340,7 +340,8 @@ def parse_and_render_todos(markdown_text: str):
 
 def render_todo_panel():
     """Render the todo panel in the right column."""
-    st.markdown("### Todo List")
+    # Match height with search input row using custom styled title
+    st.markdown('<div style="font-size: 1.25rem; font-weight: 600; color: #e2e8f0; padding: 0.5rem 0; margin-bottom: 0.5rem;">Todo List</div>', unsafe_allow_html=True)
     
     # Generate button
     if st.button("Generate Todos", use_container_width=True, key="generate_todos_btn"):
@@ -378,13 +379,22 @@ def render_login_screen():
 
 def render_main_app():
     """Render the main application with two-column layout."""
-    # Header row: Title (left) and Logout button (right)
-    title_col, logout_col = st.columns([6, 1])
+    # Header row: Title (left) and Email + Logout button (right)
+    title_col, user_col = st.columns([5, 2])
     with title_col:
         st.markdown('<div class="main-title">Email to Todo</div>', unsafe_allow_html=True)
         st.markdown('<div class="subtitle">Transform your inbox into organized action</div>', unsafe_allow_html=True)
-    with logout_col:
-        if st.button("Logout", key="logout", use_container_width=True):
+    with user_col:
+        # Display email and logout button
+        if 'user_email' not in st.session_state:
+            from src.emails.read_mail import get_user_email
+            try:
+                st.session_state.user_email = get_user_email()
+            except Exception:
+                st.session_state.user_email = ""
+        if st.session_state.user_email:
+            st.markdown(f'<p style="color: #94a3b8; font-size: 0.85rem; text-align: right; margin: 0;">{st.session_state.user_email}</p>', unsafe_allow_html=True)
+        if st.button("Logout", key="logout"):
             logout()
             st.rerun()
 
@@ -402,8 +412,8 @@ def render_main_app():
         )
         st.session_state.search_query = search
         
-        # Row 2: Email count input + Fetch button (side by side)
-        count_col, fetch_col = st.columns([1, 2])
+        # Row 2: Email count input + Fetch button (side by side, compact)
+        count_col, fetch_col, spacer_col = st.columns([1, 1, 3])
         with count_col:
             email_limit = st.number_input(
                 "Emails:",
@@ -415,7 +425,7 @@ def render_main_app():
             )
         with fetch_col:
             st.markdown('<div style="margin-top: 1.6rem;"></div>', unsafe_allow_html=True)
-            if st.button("Fetch Emails", key="fetch_btn", use_container_width=True):
+            if st.button("Fetch Emails", key="fetch_btn"):
                 fetch_and_classify_emails(limit=email_limit)
         
         st.markdown("<br>", unsafe_allow_html=True)

@@ -378,6 +378,13 @@ def fetch_recent_emails(limit: int = 20, unread_only: bool = False) -> List[Dict
 
     return emails
 
+def get_user_email() -> str:
+    """Get the authenticated user's email address."""
+    creds = get_creds()
+    service = build("gmail", "v1", credentials=creds)
+    profile = service.users().getProfile(userId='me').execute()
+    return profile.get('emailAddress', 'Unknown')
+
 
 if __name__ == "__main__":
     # quick sanity check
